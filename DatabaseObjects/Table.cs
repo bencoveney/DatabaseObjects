@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 	using System.Collections.Generic;
@@ -8,7 +8,7 @@
 	/// A table in the database
 	/// TODO enforce constraints and columns not being assigned multiple times
 	/// </summary>
-	public class DatabaseTable
+	public class Table
 	{
 		/// <summary>
 		/// Query to find the names of the tables in the database
@@ -26,7 +26,7 @@ WHERE
 	AND SchemaTables.Table_Name != '__RefactorLog'";
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DatabaseTable"/> class.
+		/// Initializes a new instance of the <see cref="Table"/> class.
 		/// </summary>
 		/// <param name="catalog">The catalog.</param>
 		/// <param name="schema">The schema.</param>
@@ -38,7 +38,7 @@ WHERE
 		/// or
 		/// name
 		/// </exception>
-		public DatabaseTable(string catalog, string schema, string name)
+		public Table(string catalog, string schema, string name)
 		{
 			if (string.IsNullOrEmpty(catalog))
 			{
@@ -59,8 +59,8 @@ WHERE
 			this.Schema = schema;
 			this.Name = name;
 
-			this.Columns = new List<DatabaseColumn>();
-			this.Constraints = new List<DatabaseConstraint>();
+			this.Columns = new List<Column>();
+			this.Constraints = new List<Constraint>();
 		}
 
 		/// <summary>
@@ -94,7 +94,7 @@ WHERE
 		/// <value>
 		/// The columns.
 		/// </value>
-		public List<DatabaseColumn> Columns { get; private set; }
+		public List<Column> Columns { get; private set; }
 
 		/// <summary>
 		/// Gets the constraints.
@@ -102,7 +102,7 @@ WHERE
 		/// <value>
 		/// The constraints.
 		/// </value>
-		public List<DatabaseConstraint> Constraints { get; private set; }
+		public List<Constraint> Constraints { get; private set; }
 
 		/// <summary>
 		/// Gets a value indicating whether the table is an item.
@@ -160,21 +160,21 @@ WHERE
 							string tableName = result.GetString(2);
 
 							// Build the new table
-							DatabaseTable table = new DatabaseTable(tableCatalog, tableSchema, tableName);
+							Table table = new Table(tableCatalog, tableSchema, tableName);
 
-							DatabaseModel.Tables.Add(table);
+							Model.Tables.Add(table);
 						}
 					}
 				}
 
 				// Populate additional schema objects
-				foreach (DatabaseTable table in DatabaseModel.Tables)
+				foreach (Table table in Model.Tables)
 				{
-					DatabaseColumn.PopulateColumns(table, connection);
-					DatabaseConstraint.PopulateUniqueConstraints(table, connection);
+					Column.PopulateColumns(table, connection);
+					Constraint.PopulateUniqueConstraints(table, connection);
 				}
 
-				DatabaseConstraint.PopulateReferentialConstraints(DatabaseModel.Tables, connection);
+				Constraint.PopulateReferentialConstraints(Model.Tables, connection);
 
 				connection.Close();
 			}

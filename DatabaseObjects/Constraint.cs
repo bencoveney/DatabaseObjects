@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 	using System.Collections.Generic;
@@ -35,22 +35,22 @@
 	/// Represents a constraint applied to a table in the database
 	/// TODO Defaults?
 	/// </summary>
-	public class DatabaseConstraint
+	public class Constraint
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DatabaseConstraint" /> class
+		/// Initializes a new instance of the <see cref="Constraint" /> class
 		/// </summary>
 		/// <param name="name">The name.</param>
 		/// <param name="table">The table.</param>
 		/// <param name="type">The type.</param>
 		/// <param name="isDeferrable">if set to <c>true</c> [is deferrable].</param>
 		/// <param name="initiallyDeferred">if set to <c>true</c> [initially deferred].</param>
-		public DatabaseConstraint(string name, DatabaseTable table, ConstraintType type, bool isDeferrable, bool initiallyDeferred)
+		public Constraint(string name, Table table, ConstraintType type, bool isDeferrable, bool initiallyDeferred)
 		{
 			// Populate member variables
 			this.Name = name;
 			this.Type = type;
-			this.Columns = new List<DatabaseColumn>();
+			this.Columns = new List<Column>();
 			this.IsDeferrable = isDeferrable;
 			this.InitiallyDeferred = initiallyDeferred;
 
@@ -71,11 +71,11 @@
 		/// <value>
 		/// The table.
 		/// </value>
-		public DatabaseTable Table
+		public Table Table
 		{
 			get
 			{
-				return DatabaseModel.Tables.Single(table => table.Constraints.Contains(this));
+				return Model.Tables.Single(table => table.Constraints.Contains(this));
 			}
 		}
 
@@ -93,7 +93,7 @@
 		/// <value>
 		/// The column names.
 		/// </value>
-		public List<DatabaseColumn> Columns { get; private set; }
+		public List<Column> Columns { get; private set; }
 
 		/// <summary>
 		/// Gets the column this constraint refers to if it is a foreign key. This data is not always applicable, should possibly be in an inherited class?
@@ -101,7 +101,7 @@
 		/// <value>
 		/// The referred column.
 		/// </value>
-		public DatabaseColumn ReferencedColumn { get; private set; }
+		public Column ReferencedColumn { get; private set; }
 
 		/// <summary>
 		/// Gets a value indicating whether enforcement of this constraint can be deferred.
@@ -138,7 +138,7 @@
 		/// </summary>
 		/// <param name="table">The table.</param>
 		/// <param name="connection">The connection.</param>
-		public static void PopulateUniqueConstraints(DatabaseTable table, SqlConnection connection)
+		public static void PopulateUniqueConstraints(Table table, SqlConnection connection)
 		{
 			const string UniqueConstraintsQuery = @"
 SELECT
@@ -187,7 +187,7 @@ WHERE
 						else
 						{
 							// Build the new constraint
-							DatabaseConstraint newConstraint = new DatabaseConstraint(name, table, type, isDeferrable, initiallyDeferred);
+							Constraint newConstraint = new Constraint(name, table, type, isDeferrable, initiallyDeferred);
 							newConstraint.AddColumn(columnName);
 						}
 					}
@@ -200,7 +200,7 @@ WHERE
 		/// </summary>
 		/// <param name="table">The table.</param>
 		/// <param name="connection">The connection.</param>
-		public static void PopulateCheckConstraints(DatabaseTable table, SqlConnection connection)
+		public static void PopulateCheckConstraints(Table table, SqlConnection connection)
 		{
 			throw new NotImplementedException("Check constraints not yet implemented");
 		}
@@ -215,7 +215,7 @@ WHERE
 		/// or
 		/// The foreign key refers to a column which hasn't been populated for the given table
 		/// </exception>
-		public static void PopulateReferentialConstraints(IEnumerable<DatabaseTable> tables, SqlConnection connection)
+		public static void PopulateReferentialConstraints(IEnumerable<Table> tables, SqlConnection connection)
 		{
 			const string ReferentialConstraintsQuery = @"
 SELECT
@@ -240,7 +240,7 @@ WHERE
 	AND DatabaseConstraints.TABLE_NAME = @TableName
 	AND DatabaseConstraints.CONSTRAINT_TYPE = 'FOREIGN KEY'";
 
-			foreach (DatabaseTable table in tables)
+			foreach (Table table in tables)
 			{
 				// Query the database for the constraint data
 				using (SqlCommand command = new SqlCommand(ReferentialConstraintsQuery, connection))
@@ -264,11 +264,11 @@ WHERE
 							string referencedColumnName = (string)result["ReferencedColumn"];
 
 							// Create the constraint
-							DatabaseConstraint constraint = new DatabaseConstraint(name, table, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
+							Constraint constraint = new Constraint(name, table, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
 							constraint.AddColumn(columnName);
 
 							// Find the table the foreign key refers to
-							DatabaseTable referencedTable = tables.SingleOrDefault(t =>
+							Table referencedTable = tables.SingleOrDefault(t =>
 								t.Catalog == referencedCatalog
 								&& t.Schema == referencedSchema
 								&& t.Name == referencedTableName);
@@ -280,7 +280,7 @@ WHERE
 							}
 
 							// Find the column on the table
-							DatabaseColumn referencedColumn = referencedTable.Columns.SingleOrDefault(c => c.Name == referencedColumnName);
+							Column referencedColumn = referencedTable.Columns.SingleOrDefault(c => c.Name == referencedColumnName);
 
 							// Check it exists
 							if (referencedColumn == null)
@@ -309,7 +309,7 @@ WHERE
 		/// Adds the column to this constraint's list of subject columns.
 		/// </summary>
 		/// <param name="column">The column.</param>
-		public void AddColumn(DatabaseColumn column)
+		public void AddColumn(Column column)
 		{
 			this.Columns.Add(column);
 		}
@@ -322,7 +322,7 @@ WHERE
 		/// </returns>
 		public override string ToString()
 		{
-			return string.Format("{0} ({1})", this.Name, string.Join(", ", this.Columns.Select<DatabaseColumn, string>(column => column.Name)));
+			return string.Format("{0} ({1})", this.Name, string.Join(", ", this.Columns.Select<Column, string>(column => column.Name)));
 		}
 	}
 }

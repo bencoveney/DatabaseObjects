@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System.Collections.Generic;
 	using System.Linq;
@@ -6,15 +6,15 @@
 	/// <summary>
 	/// Singleton class to represent an entire database and it's objects.
 	/// </summary>
-	public static class DatabaseModel
+	public static class Model
 	{
 		/// <summary>
-		/// Initializes static members of the <see cref="DatabaseModel"/> class.
+		/// Initializes static members of the <see cref="Model"/> class.
 		/// </summary>
-		static DatabaseModel()
+		static Model()
 		{
-			DatabaseModel.Tables = new List<DatabaseTable>();
-			DatabaseModel.Routines = new List<DatabaseRoutine>();
+			Model.Tables = new List<Table>();
+			Model.Routines = new List<Routine>();
 		}
 
 		/// <summary>
@@ -23,7 +23,7 @@
 		/// <value>
 		/// The tables.
 		/// </value>
-		public static List<DatabaseTable> Tables
+		public static List<Table> Tables
 		{
 			get;
 			private set;
@@ -35,7 +35,7 @@
 		/// <value>
 		/// The routines.
 		/// </value>
-		public static List<DatabaseRoutine> Routines
+		public static List<Routine> Routines
 		{
 			get;
 			private set;
@@ -47,7 +47,7 @@
 		/// <value>
 		/// The columns.
 		/// </value>
-		public static IEnumerable<DatabaseColumn> AllColumns
+		public static IEnumerable<Column> AllColumns
 		{
 			get
 			{
@@ -61,7 +61,7 @@
 		/// <value>
 		/// The constraints.
 		/// </value>
-		public static IEnumerable<DatabaseConstraint> AllConstraints
+		public static IEnumerable<Constraint> AllConstraints
 		{
 			get
 			{
@@ -75,7 +75,7 @@
 		/// <value>
 		/// All parameters.
 		/// </value>
-		public static IEnumerable<DatabaseRoutineParameter> AllParameters
+		public static IEnumerable<RoutineParameter> AllParameters
 		{
 			get
 			{
@@ -91,8 +91,8 @@
 		{
 
 			// Load the database objects
-			DatabaseTable.LoadTables(connectionString);
-			DatabaseRoutine.LoadRoutines(connectionString);
+			Table.LoadTables(connectionString);
+			Routine.LoadRoutines(connectionString);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 	using System.Data.SqlClient;

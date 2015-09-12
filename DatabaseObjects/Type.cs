@@ -1,14 +1,14 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 
 	/// <summary>
 	/// Represents a data type from the database
 	/// </summary>
-	public class DatabaseType
+	public class Type
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DatabaseType"/> class.
+		/// Initializes a new instance of the <see cref="Type"/> class.
 		/// </summary>
 		/// <param name="dataType">Type of the data.</param>
 		/// <param name="characterMaximumLength">Maximum length of the character.</param>
@@ -18,7 +18,7 @@
 		/// <param name="numericPrecisionRadix">The numeric precision radix.</param>
 		/// <param name="numericScale">The numeric scale.</param>
 		/// <param name="dateTimePrecision">The date time precision.</param>
-		public DatabaseType(string dataType, int? characterMaximumLength, string characterSetName, string collationName, int? numericPrecision, int? numericPrecisionRadix, int? numericScale, int? dateTimePrecision)
+		public Type(string dataType, int? characterMaximumLength, string characterSetName, string collationName, int? numericPrecision, int? numericPrecisionRadix, int? numericScale, int? dateTimePrecision)
 		{
 			this.DataType = dataType;
 			this.CharacterMaximumLength = characterMaximumLength;
@@ -180,7 +180,7 @@
 		/// Gets a model system type from the column's data type.
 		/// </summary>
 		/// <returns>A model system type.</returns>
-		public Type GetSystemType()
+		public System.Type GetSystemType()
 		{
 			// TODO full list available here: https://msdn.microsoft.com/en-us/library/cc716729%28v=vs.110%29.aspx
 			// TODO Xml not implemented

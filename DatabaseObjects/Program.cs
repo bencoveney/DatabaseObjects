@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 	using System.Collections.Generic;
@@ -19,7 +19,7 @@
 		/// <value>
 		/// The tables.
 		/// </value>
-		public static IEnumerable<DatabaseTable> Tables { get; private set; }
+		public static IEnumerable<Table> Tables { get; private set; }
 
 		/// <summary>
 		/// Mains the specified arguments.
@@ -27,7 +27,7 @@
 		/// <param name="args">The arguments.</param>
 		public static void Main(string[] args)
 		{
-			DatabaseModel.LoadFromDatabase(ConnectionString);
+			Model.LoadFromDatabase(ConnectionString);
 
 			Console.ReadLine();
 		}

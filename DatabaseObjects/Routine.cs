@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 	using System.Collections.Generic;
@@ -23,7 +23,7 @@
 	/// <summary>
 	/// A stored procedure in the database
 	/// </summary>
-	public class DatabaseRoutine
+	public class Routine
 	{
 		/// <summary>
 		/// Query to find the routines in the database
@@ -49,7 +49,7 @@ FROM
 	INFORMATION_SCHEMA.ROUTINES AS DatabaseRoutines";
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DatabaseRoutine"/> class.
+		/// Initializes a new instance of the <see cref="Routine"/> class.
 		/// </summary>
 		/// <param name="catalog">The catalog.</param>
 		/// <param name="schema">The schema.</param>
@@ -59,7 +59,7 @@ FROM
 		/// <param name="definition">The definition.</param>
 		/// <param name="created">The created.</param>
 		/// <param name="lastAltered">The last altered.</param>
-		public DatabaseRoutine(string catalog, string schema, string name, RoutineType routineType, DatabaseType returnType, string definition, DateTime created, DateTime lastAltered)
+		public Routine(string catalog, string schema, string name, RoutineType routineType, Type returnType, string definition, DateTime created, DateTime lastAltered)
 		{
 			this.Catalog = catalog;
 			this.Schema = schema;
@@ -70,7 +70,7 @@ FROM
 			this.Created = created;
 			this.LastAltered = lastAltered;
 
-			this.Parameters = new List<DatabaseRoutineParameter>();
+			this.Parameters = new List<RoutineParameter>();
 		}
 
 		/// <summary>
@@ -115,7 +115,7 @@ FROM
 		/// <value>
 		/// The parameters.
 		/// </value>
-		public List<DatabaseRoutineParameter> Parameters
+		public List<RoutineParameter> Parameters
 		{
 			get;
 			private set;
@@ -139,7 +139,7 @@ FROM
 		/// <value>
 		/// The type of the return.
 		/// </value>
-		public DatabaseType ReturnType
+		public Type ReturnType
 		{
 			get;
 			private set;
@@ -211,7 +211,7 @@ FROM
 							RoutineType routineType = (RoutineType)Enum.Parse(typeof(RoutineType), routineTypeAsText, true);
 
 							// Build the proper data structure for return type
-							DatabaseType returnType = null;
+							Type returnType = null;
 							if (!result.IsDBNull("DATA_TYPE"))
 							{
 								// Read the result data for the routine's return type
@@ -224,21 +224,21 @@ FROM
 								string characterSetName = result.GetNullableString("CHARACTER_SET_NAME");
 								string collationName = result.GetNullableString("COLLATION_NAME");
 
-								returnType = new DatabaseType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+								returnType = new Type(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 							}
 
 							// Build the new routine
-							DatabaseRoutine routine = new DatabaseRoutine(catalog, schema, name, routineType, returnType, definition, created, lastAltered);
+							Routine routine = new Routine(catalog, schema, name, routineType, returnType, definition, created, lastAltered);
 
-							DatabaseModel.Routines.Add(routine);
+							Model.Routines.Add(routine);
 						}
 					}
 				}
 
 				// Populate parameters
-				foreach (DatabaseRoutine routine in DatabaseModel.Routines)
+				foreach (Routine routine in Model.Routines)
 				{
-					DatabaseRoutineParameter.PopulateParameters(routine, connection);
+					RoutineParameter.PopulateParameters(routine, connection);
 				}
 			}
 		}

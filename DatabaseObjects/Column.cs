@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System.Collections.Generic;
 	using System.Data.SqlClient;
@@ -7,7 +7,7 @@
 	/// <summary>
 	/// Represents a table's column in the database
 	/// </summary>
-	public class DatabaseColumn
+	public class Column
 	{
 		/// <summary>
 		/// Query to find the columns for all tables in the database
@@ -37,7 +37,7 @@ ORDER BY
 	ORDINAL_POSITION";
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DatabaseColumn" /> class.
+		/// Initializes a new instance of the <see cref="Column" /> class.
 		/// </summary>
 		/// <param name="name">Name of the column.</param>
 		/// <param name="table">The table.</param>
@@ -45,7 +45,7 @@ ORDER BY
 		/// <param name="ordinalPosition">The ordinal position.</param>
 		/// <param name="columnDefault">The column default.</param>
 		/// <param name="isNullable">if set to <c>true</c> the column can be set to null.</param>
-		public DatabaseColumn(string name, DatabaseTable table, DatabaseType type, int ordinalPosition, string columnDefault, bool isNullable)
+		public Column(string name, Table table, Type type, int ordinalPosition, string columnDefault, bool isNullable)
 		{
 			// Populate member variables
 			// A lot of the varibales here are duplicated from the tables class. maybe these columns should just be properties of the tables?
@@ -76,7 +76,7 @@ ORDER BY
 		/// <value>
 		/// The type.
 		/// </value>
-		public DatabaseType Type
+		public Type Type
 		{
 			get;
 			private set;
@@ -88,11 +88,11 @@ ORDER BY
 		/// <value>
 		/// The table.
 		/// </value>
-		public DatabaseTable Table
+		public Table Table
 		{
 			get
 			{
-				return DatabaseModel.Tables.Single(table => table.Columns.Contains(this));
+				return Model.Tables.Single(table => table.Columns.Contains(this));
 			}
 		}
 
@@ -144,7 +144,7 @@ ORDER BY
 		{
 			get
 			{
-				return DatabaseModel.AllConstraints.Any(dbConstraint => dbConstraint.Type == ConstraintType.ForeignKey && dbConstraint.ReferencedColumn == this);
+				return Model.AllConstraints.Any(dbConstraint => dbConstraint.Type == ConstraintType.ForeignKey && dbConstraint.ReferencedColumn == this);
 			}
 		}
 
@@ -154,11 +154,11 @@ ORDER BY
 		/// <value>
 		/// The referenced column.
 		/// </value>
-		public DatabaseColumn ReferencedColumn
+		public Column ReferencedColumn
 		{
 			get
 			{
-				DatabaseConstraint foreignKey = this.Table.Constraints.Single(constraint => constraint.Type == ConstraintType.ForeignKey && constraint.Columns.Contains(this));
+				Constraint foreignKey = this.Table.Constraints.Single(constraint => constraint.Type == ConstraintType.ForeignKey && constraint.Columns.Contains(this));
 				return foreignKey.ReferencedColumn;
 			}
 		}
@@ -169,11 +169,11 @@ ORDER BY
 		/// <value>
 		/// The referencing constraints.
 		/// </value>
-		public IEnumerable<DatabaseConstraint> ReferencingConstraints
+		public IEnumerable<Constraint> ReferencingConstraints
 		{
 			get
 			{
-				return DatabaseModel.AllConstraints.Where(constraint => constraint.Columns.Contains(this));
+				return Model.AllConstraints.Where(constraint => constraint.Columns.Contains(this));
 			}
 		}
 
@@ -182,7 +182,7 @@ ORDER BY
 		/// </summary>
 		/// <param name="table">The table.</param>
 		/// <param name="connection">The connection.</param>
-		public static void PopulateColumns(DatabaseTable table, SqlConnection connection)
+		public static void PopulateColumns(Table table, SqlConnection connection)
 		{
 			// Query the database for the column data
 			using (SqlCommand command = new SqlCommand(ColumnsQuery, connection))
@@ -212,10 +212,10 @@ ORDER BY
 						string collationName = result.GetNullableString("COLLATION_NAME");
 
 						// Build the proper data structure for return type
-						DatabaseType type = new DatabaseType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+						Type type = new Type(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 
 						// Build the new column
-						new DatabaseColumn(name, table, type, ordinalPosition, columnDefault, isNullable);
+						new Column(name, table, type, ordinalPosition, columnDefault, isNullable);
 					}
 				}
 			}

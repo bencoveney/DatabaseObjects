@@ -1,4 +1,4 @@
-﻿namespace ItemLoader
+﻿namespace DatabaseObjects
 {
 	using System;
 	using System.Data.SqlClient;
@@ -27,7 +27,7 @@
 	/// <summary>
 	/// A parameter for a stored procedure in the database
 	/// </summary>
-	public class DatabaseRoutineParameter
+	public class RoutineParameter
 	{
 		/// <summary>
 		/// Gets the date this routine was created.
@@ -53,14 +53,14 @@ WHERE
 	AND RoutineParameters.SPECIFIC_NAME = @RoutineName";
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="DatabaseRoutineParameter" /> class.
+		/// Initializes a new instance of the <see cref="RoutineParameter" /> class.
 		/// </summary>
 		/// <param name="name">The name.</param>
 		/// <param name="routine">The routine.</param>
 		/// <param name="ordinalPosition">The ordinal position.</param>
 		/// <param name="mode">The mode.</param>
 		/// <param name="type">The type.</param>
-		public DatabaseRoutineParameter(string name, DatabaseRoutine routine, int ordinalPosition, ParameterMode mode, DatabaseType type)
+		public RoutineParameter(string name, Routine routine, int ordinalPosition, ParameterMode mode, Type type)
 		{
 			this.Name = name;
 			this.OrdinalPosition = ordinalPosition;
@@ -112,7 +112,7 @@ WHERE
 		/// <value>
 		/// The type.
 		/// </value>
-		public DatabaseType Type
+		public Type Type
 		{
 			get;
 			private set;
@@ -123,7 +123,7 @@ WHERE
 		/// </summary>
 		/// <param name="routine">The routine.</param>
 		/// <param name="connection">The connection.</param>
-		public static void PopulateParameters(DatabaseRoutine routine, SqlConnection connection)
+		public static void PopulateParameters(Routine routine, SqlConnection connection)
 		{
 			// Query the database for the column data
 			using (SqlCommand command = new SqlCommand(RoutineParametersQuery, connection))
@@ -155,7 +155,7 @@ WHERE
 						string collationName = result.GetNullableString("COLLATION_NAME");
 
 						// Build the proper data structure for return type
-						DatabaseType returnType = new DatabaseType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+						Type returnType = new Type(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 
 						// Remove the @ from the front of the name
 						if (name.IndexOf("@") == 0)
@@ -163,7 +163,7 @@ WHERE
 							name = name.Substring(1);
 						}
 
-						DatabaseRoutineParameter parameter = new DatabaseRoutineParameter(name, routine, ordinalPosition, mode, returnType);
+						RoutineParameter parameter = new RoutineParameter(name, routine, ordinalPosition, mode, returnType);
 					}
 				}
 			}
