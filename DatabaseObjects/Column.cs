@@ -1,7 +1,9 @@
 ﻿namespace DatabaseObjects
 {
+	using System;
 	using System.Collections.Generic;
 	using System.Data.SqlClient;
+	using System.Globalization;
 	using System.Linq;
 
 	/// <summary>
@@ -40,22 +42,19 @@ ORDER BY
 		/// Initializes a new instance of the <see cref="Column" /> class.
 		/// </summary>
 		/// <param name="name">Name of the column.</param>
-		/// <param name="table">The table.</param>
 		/// <param name="type">The type.</param>
 		/// <param name="ordinalPosition">The ordinal position.</param>
 		/// <param name="columnDefault">The column default.</param>
 		/// <param name="isNullable">if set to <c>true</c> the column can be set to null.</param>
-		public Column(string name, Table table, Type type, int ordinalPosition, string columnDefault, bool isNullable)
+		public Column(string name, SqlType type, int ordinalPosition, string columnDefault, bool isNullable)
 		{
 			// Populate member variables
 			// A lot of the varibales here are duplicated from the tables class. maybe these columns should just be properties of the tables?
 			this.Name = name;
-			this.Type = type;
+			this.DataType = type;
 			this.OrdinalPosition = ordinalPosition;
 			this.ColumnDefault = columnDefault;
 			this.IsNullable = isNullable;
-
-			table.Columns.Add(this);
 		}
 
 		/// <summary>
@@ -76,24 +75,10 @@ ORDER BY
 		/// <value>
 		/// The type.
 		/// </value>
-		public Type Type
+		public SqlType DataType
 		{
 			get;
 			private set;
-		}
-
-		/// <summary>
-		/// Gets the table this column is on.
-		/// </summary>
-		/// <value>
-		/// The table.
-		/// </value>
-		public Table Table
-		{
-			get
-			{
-				return Model.Tables.Single(table => table.Columns.Contains(this));
-			}
 		}
 
 		/// <summary>
@@ -121,69 +106,17 @@ ORDER BY
 		public bool IsNullable { get; private set; }
 
 		/// <summary>
-		/// Gets a value indicating whether this column is a foreign key referencing another table (in the model).
-		/// </summary>
-		/// <value>
-		/// <c>true</c> if this instance is references another column; otherwise, <c>false</c>.
-		/// </value>
-		public bool IsReferencer
-		{
-			get
-			{
-				return this.Table.Constraints.Any(dbConstraint => dbConstraint.Type == ConstraintType.ForeignKey && dbConstraint.Columns.Contains(this));
-			}
-		}
-
-		/// <summary>
-		/// Gets a value indicating whether this column is the column referred to by any foreign keys (in the model).
-		/// </summary>
-		/// <value>
-		/// <c>true</c> if this instance is referenced; otherwise, <c>false</c>.
-		/// </value>
-		public bool IsReferenced
-		{
-			get
-			{
-				return Model.AllConstraints.Any(dbConstraint => dbConstraint.Type == ConstraintType.ForeignKey && dbConstraint.ReferencedColumn == this);
-			}
-		}
-
-		/// <summary>
-		/// Gets the column referred to by this column's foreign key (if any).
-		/// </summary>
-		/// <value>
-		/// The referenced column.
-		/// </value>
-		public Column ReferencedColumn
-		{
-			get
-			{
-				Constraint foreignKey = this.Table.Constraints.Single(constraint => constraint.Type == ConstraintType.ForeignKey && constraint.Columns.Contains(this));
-				return foreignKey.ReferencedColumn;
-			}
-		}
-
-		/// <summary>
-		/// Gets the constraints which reference this column.
-		/// </summary>
-		/// <value>
-		/// The referencing constraints.
-		/// </value>
-		public IEnumerable<Constraint> ReferencingConstraints
-		{
-			get
-			{
-				return Model.AllConstraints.Where(constraint => constraint.Columns.Contains(this));
-			}
-		}
-
-		/// <summary>
 		/// Loads the columns from the database for a specific table.
 		/// </summary>
 		/// <param name="table">The table.</param>
 		/// <param name="connection">The connection.</param>
 		public static void PopulateColumns(Table table, SqlConnection connection)
 		{
+			if (table == null)
+			{
+				throw new ArgumentNullException("table", "table cannot be null");
+			}
+
 			// Query the database for the column data
 			using (SqlCommand command = new SqlCommand(ColumnsQuery, connection))
 			{
@@ -212,10 +145,10 @@ ORDER BY
 						string collationName = result.GetNullableString("COLLATION_NAME");
 
 						// Build the proper data structure for return type
-						Type type = new Type(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+						SqlType type = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 
 						// Build the new column
-						new Column(name, table, type, ordinalPosition, columnDefault, isNullable);
+						table.Columns.Add(new Column(name, type, ordinalPosition, columnDefault, isNullable));
 					}
 				}
 			}
@@ -229,7 +162,7 @@ ORDER BY
 		/// </returns>
 		public override string ToString()
 		{
-			return string.Format("{0} ({1})", this.Name, this.Type);
+			return string.Format(CultureInfo.InvariantCulture, "{0} ({1})", this.Name, this.DataType);
 		}
 	}
 }

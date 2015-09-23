@@ -2,13 +2,20 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Collections.ObjectModel;
 	using System.Data.SqlClient;
+	using System.Globalization;
 
 	/// <summary>
 	/// Defines the type of a routine
 	/// </summary>
 	public enum RoutineType
 	{
+		/// <summary>
+		/// Not a known routine type
+		/// </summary>
+		Unknown = 0,
+
 		/// <summary>
 		/// A stored procedure
 		/// </summary>
@@ -49,6 +56,11 @@ FROM
 	INFORMATION_SCHEMA.ROUTINES AS DatabaseRoutines";
 
 		/// <summary>
+		/// The parameters
+		/// </summary>
+		private Collection<RoutineParameter> parameters;
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="Routine"/> class.
 		/// </summary>
 		/// <param name="catalog">The catalog.</param>
@@ -59,7 +71,7 @@ FROM
 		/// <param name="definition">The definition.</param>
 		/// <param name="created">The created.</param>
 		/// <param name="lastAltered">The last altered.</param>
-		public Routine(string catalog, string schema, string name, RoutineType routineType, Type returnType, string definition, DateTime created, DateTime lastAltered)
+		public Routine(string catalog, string schema, string name, RoutineType routineType, SqlType returnType, string definition, DateTime created, DateTime lastAltered)
 		{
 			this.Catalog = catalog;
 			this.Schema = schema;
@@ -70,7 +82,7 @@ FROM
 			this.Created = created;
 			this.LastAltered = lastAltered;
 
-			this.Parameters = new List<RoutineParameter>();
+			this.parameters = new Collection<RoutineParameter>();
 		}
 
 		/// <summary>
@@ -115,10 +127,12 @@ FROM
 		/// <value>
 		/// The parameters.
 		/// </value>
-		public List<RoutineParameter> Parameters
+		public Collection<RoutineParameter> Parameters
 		{
-			get;
-			private set;
+			get
+			{
+				return this.parameters;
+			}
 		}
 
 		/// <summary>
@@ -139,7 +153,7 @@ FROM
 		/// <value>
 		/// The type of the return.
 		/// </value>
-		public Type ReturnType
+		public SqlType ReturnType
 		{
 			get;
 			private set;
@@ -185,8 +199,11 @@ FROM
 		/// Loads the routines from the database.
 		/// </summary>
 		/// <param name="connectionString">The connection string.</param>
-		public static void LoadRoutines(string connectionString)
+		/// <returns>The loaded routines.</returns>
+		public static Collection<Routine> LoadFromDatabase(string connectionString)
 		{
+			Collection<Routine> result = new Collection<Routine>();
+
 			using (SqlConnection connection = new SqlConnection(connectionString))
 			{
 				connection.Open();
@@ -194,53 +211,55 @@ FROM
 				// Query the database for the table data
 				using (SqlCommand command = new SqlCommand(RoutinesQuery, connection))
 				{
-					using (SqlDataReader result = command.ExecuteReader())
+					using (SqlDataReader reader = command.ExecuteReader())
 					{
-						while (result.Read())
+						while (reader.Read())
 						{
 							// Read the result data for the routine
-							string catalog = (string)result["SPECIFIC_CATALOG"];
-							string schema = (string)result["SPECIFIC_SCHEMA"];
-							string name = (string)result["SPECIFIC_NAME"];
-							string routineTypeAsText = (string)result["ROUTINE_TYPE"];
-							string definition = (string)result["ROUTINE_DEFINITION"];
-							DateTime created = (DateTime)result["CREATED"];
-							DateTime lastAltered = (DateTime)result["LAST_ALTERED"];
+							string catalog = (string)reader["SPECIFIC_CATALOG"];
+							string schema = (string)reader["SPECIFIC_SCHEMA"];
+							string name = (string)reader["SPECIFIC_NAME"];
+							string routineTypeAsText = (string)reader["ROUTINE_TYPE"];
+							string definition = (string)reader["ROUTINE_DEFINITION"];
+							DateTime created = (DateTime)reader["CREATED"];
+							DateTime lastAltered = (DateTime)reader["LAST_ALTERED"];
 
 							// Build the proper data structure for routine type
 							RoutineType routineType = (RoutineType)Enum.Parse(typeof(RoutineType), routineTypeAsText, true);
 
 							// Build the proper data structure for return type
-							Type returnType = null;
-							if (!result.IsDBNull("DATA_TYPE"))
+							SqlType returnType = null;
+							if (!reader.IsDBNull("DATA_TYPE"))
 							{
 								// Read the result data for the routine's return type
-								string dataType = (string)result["DATA_TYPE"];
-								int? characterMaximumLength = result.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
-								int? numericPrecision = result.GetNullable<int>("NUMERIC_PRECISION");
-								int? numericPrecisionRadix = result.GetNullable<int>("NUMERIC_PRECISION_RADIX");
-								int? numericScale = result.GetNullable<int>("NUMERIC_SCALE");
-								int? dateTimePrecision = result.GetNullable<int>("DATETIME_PRECISION");
-								string characterSetName = result.GetNullableString("CHARACTER_SET_NAME");
-								string collationName = result.GetNullableString("COLLATION_NAME");
+								string dataType = (string)reader["DATA_TYPE"];
+								int? characterMaximumLength = reader.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
+								int? numericPrecision = reader.GetNullable<int>("NUMERIC_PRECISION");
+								int? numericPrecisionRadix = reader.GetNullable<int>("NUMERIC_PRECISION_RADIX");
+								int? numericScale = reader.GetNullable<int>("NUMERIC_SCALE");
+								int? dateTimePrecision = reader.GetNullable<int>("DATETIME_PRECISION");
+								string characterSetName = reader.GetNullableString("CHARACTER_SET_NAME");
+								string collationName = reader.GetNullableString("COLLATION_NAME");
 
-								returnType = new Type(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+								returnType = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 							}
 
 							// Build the new routine
 							Routine routine = new Routine(catalog, schema, name, routineType, returnType, definition, created, lastAltered);
 
-							Model.Routines.Add(routine);
+							result.Add(routine);
 						}
 					}
 				}
 
 				// Populate parameters
-				foreach (Routine routine in Model.Routines)
+				foreach (Routine routine in result)
 				{
 					RoutineParameter.PopulateParameters(routine, connection);
 				}
 			}
+
+			return result;
 		}
 
 		/// <summary>
@@ -253,11 +272,11 @@ FROM
 		{
 			if (this.ReturnType != null)
 			{
-				return string.Format("{0}.{1}.{2} ({3})", this.Catalog, this.Schema, this.Name, this.ReturnType);
+				return string.Format(CultureInfo.InvariantCulture, "{0}.{1}.{2} ({3})", this.Catalog, this.Schema, this.Name, this.ReturnType);
 			}
 			else
 			{
-				return string.Format("{0}.{1}.{2} (NULL)", this.Catalog, this.Schema, this.Name);
+				return string.Format(CultureInfo.InvariantCulture, "{0}.{1}.{2} (NULL)", this.Catalog, this.Schema, this.Name);
 			}
 		}
 	}

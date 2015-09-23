@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseObjects", "Database
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{A266C0B3-A909-41D7-A3CF-817D30D5C7E0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionalTests", "FunctionalTests\FunctionalTests.csproj", "{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,11 +50,22 @@ Global
 		{E9352BC3-224D-44F6-A2D9-3D7A8599ACA8}.Release|Mixed Platforms.Build.0 = Release|x86
 		{E9352BC3-224D-44F6-A2D9-3D7A8599ACA8}.Release|x86.ActiveCfg = Release|x86
 		{E9352BC3-224D-44F6-A2D9-3D7A8599ACA8}.Release|x86.Build.0 = Release|x86
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{7056FEFE-6A32-4BE4-920C-7FBA477F1CE9} = {A266C0B3-A909-41D7-A3CF-817D30D5C7E0}
+		{C4D7D874-2C64-4BD5-9AA1-CDE1AFD667AD} = {A266C0B3-A909-41D7-A3CF-817D30D5C7E0}
 	EndGlobalSection
 EndGlobal

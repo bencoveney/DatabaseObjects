@@ -2,7 +2,10 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Collections.ObjectModel;
 	using System.Data.SqlClient;
+	using System.Globalization;
+	using System.Linq;
 
 	/// <summary>
 	/// A table in the database
@@ -11,19 +14,14 @@
 	public class Table
 	{
 		/// <summary>
-		/// Query to find the names of the tables in the database
+		/// The columns
 		/// </summary>
-		private const string TablesQuery = @"
-SELECT
-	SchemaTables.Table_Catalog,
-	SchemaTables.Table_Schema,
-	SchemaTables.Table_Name
-FROM
-	Information_Schema.Tables AS SchemaTables
-WHERE
-	SchemaTables.Table_Type = 'BASE TABLE'
-	AND SchemaTables.Table_Name != 'sysdiagrams'
-	AND SchemaTables.Table_Name != '__RefactorLog'";
+		private Collection<Column> columns;
+
+		/// <summary>
+		/// The constraints
+		/// </summary>
+		private Collection<Constraint> constraints;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="Table"/> class.
@@ -59,8 +57,8 @@ WHERE
 			this.Schema = schema;
 			this.Name = name;
 
-			this.Columns = new List<Column>();
-			this.Constraints = new List<Constraint>();
+			this.columns = new Collection<Column>();
+			this.constraints = new Collection<Constraint>();
 		}
 
 		/// <summary>
@@ -94,7 +92,13 @@ WHERE
 		/// <value>
 		/// The columns.
 		/// </value>
-		public List<Column> Columns { get; private set; }
+		public Collection<Column> Columns
+		{
+			get
+			{
+				return this.columns;
+			}
+		}
 
 		/// <summary>
 		/// Gets the constraints.
@@ -102,7 +106,13 @@ WHERE
 		/// <value>
 		/// The constraints.
 		/// </value>
-		public List<Constraint> Constraints { get; private set; }
+		public Collection<Constraint> Constraints
+		{
+			get
+			{
+				return this.constraints;
+			}
+		}
 
 		/// <summary>
 		/// Gets a value indicating whether the table is an item.
@@ -141,8 +151,23 @@ WHERE
 		/// Loads the tables from the database.
 		/// </summary>
 		/// <param name="connectionString">The connection string.</param>
-		public static void LoadTables(string connectionString)
+		/// <returns>The loaded collections.</returns>
+		public static Collection<Table> LoadFromDatabase(string connectionString)
 		{
+			const string TablesQuery = @"
+SELECT
+	SchemaTables.Table_Catalog,
+	SchemaTables.Table_Schema,
+	SchemaTables.Table_Name
+FROM
+	Information_Schema.Tables AS SchemaTables
+WHERE
+	SchemaTables.Table_Type = 'BASE TABLE'
+	AND SchemaTables.Table_Name != 'sysdiagrams'
+	AND SchemaTables.Table_Name != '__RefactorLog'";
+
+			Collection<Table> result = new Collection<Table>();
+
 			using (SqlConnection connection = new SqlConnection(connectionString))
 			{
 				connection.Open();
@@ -150,34 +175,44 @@ WHERE
 				// Query the database for the table data
 				using (SqlCommand command = new SqlCommand(TablesQuery, connection))
 				{
-					using (SqlDataReader result = command.ExecuteReader())
+					using (SqlDataReader reader = command.ExecuteReader())
 					{
-						while (result.Read())
+						while (reader.Read())
 						{
 							// Read the result data
-							string tableCatalog = result.GetString(0);
-							string tableSchema = result.GetString(1);
-							string tableName = result.GetString(2);
+							string tableCatalog = reader.GetString(0);
+							string tableSchema = reader.GetString(1);
+							string tableName = reader.GetString(2);
 
 							// Build the new table
 							Table table = new Table(tableCatalog, tableSchema, tableName);
 
-							Model.Tables.Add(table);
+							result.Add(table);
 						}
 					}
 				}
 
 				// Populate additional schema objects
-				foreach (Table table in Model.Tables)
+				foreach (Table table in result)
 				{
 					Column.PopulateColumns(table, connection);
 					Constraint.PopulateUniqueConstraints(table, connection);
 				}
 
-				Constraint.PopulateReferentialConstraints(Model.Tables, connection);
-
-				connection.Close();
+				Constraint.PopulateReferentialConstraints(result, connection);
 			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Gets the column with the specified name.
+		/// </summary>
+		/// <param name="columnName">Name of the column.</param>
+		/// <returns>The column.</returns>
+		public Column GetColumn(string columnName)
+		{
+			return this.Columns.Single(column => column.Name == columnName);
 		}
 
 		/// <summary>
@@ -188,7 +223,7 @@ WHERE
 		/// </returns>
 		public override string ToString()
 		{
-			return string.Format("{0}.{1}.{2}", this.Catalog, this.Schema, this.Name);
+			return string.Format(CultureInfo.InvariantCulture, "{0}.{1}.{2}", this.Catalog, this.Schema, this.Name);
 		}
 	}
 }

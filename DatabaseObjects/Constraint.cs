@@ -3,6 +3,7 @@
 	using System;
 	using System.Collections.Generic;
 	using System.Data.SqlClient;
+	using System.Globalization;
 	using System.Linq;
 
 	/// <summary>
@@ -38,6 +39,11 @@
 	public class Constraint
 	{
 		/// <summary>
+		/// The columns
+		/// </summary>
+		private IList<Column> columns;
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="Constraint" /> class
 		/// </summary>
 		/// <param name="name">The name.</param>
@@ -47,10 +53,15 @@
 		/// <param name="initiallyDeferred">if set to <c>true</c> [initially deferred].</param>
 		public Constraint(string name, Table table, ConstraintType type, bool isDeferrable, bool initiallyDeferred)
 		{
+			if (table == null)
+			{
+				throw new ArgumentNullException("table", "table cannot be null");
+			}
+
 			// Populate member variables
 			this.Name = name;
-			this.Type = type;
-			this.Columns = new List<Column>();
+			this.ConstraintType = type;
+			this.columns = new List<Column>();
 			this.IsDeferrable = isDeferrable;
 			this.InitiallyDeferred = initiallyDeferred;
 
@@ -66,26 +77,12 @@
 		public string Name { get; private set; }
 
 		/// <summary>
-		/// Gets the table this constraint applies to.
-		/// </summary>
-		/// <value>
-		/// The table.
-		/// </value>
-		public Table Table
-		{
-			get
-			{
-				return Model.Tables.Single(table => table.Constraints.Contains(this));
-			}
-		}
-
-		/// <summary>
 		/// Gets the type of the constraint.
 		/// </summary>
 		/// <value>
 		/// The type of the constraint.
 		/// </value>
-		public ConstraintType Type { get; private set; }
+		public ConstraintType ConstraintType { get; private set; }
 
 		/// <summary>
 		/// Gets the column names covered by this constraint.
@@ -93,7 +90,13 @@
 		/// <value>
 		/// The column names.
 		/// </value>
-		public List<Column> Columns { get; private set; }
+		public IList<Column> Columns
+		{
+			get
+			{
+				return this.columns;
+			}
+		}
 
 		/// <summary>
 		/// Gets the column this constraint refers to if it is a foreign key. This data is not always applicable, should possibly be in an inherited class?
@@ -129,7 +132,7 @@
 		{
 			get
 			{
-				return this.Type == ConstraintType.PrimaryKey || this.Type == ConstraintType.Unique;
+				return this.ConstraintType == ConstraintType.PrimaryKey || this.ConstraintType == ConstraintType.Unique;
 			}
 		}
 
@@ -140,6 +143,11 @@
 		/// <param name="connection">The connection.</param>
 		public static void PopulateUniqueConstraints(Table table, SqlConnection connection)
 		{
+			if (table == null)
+			{
+				throw new ArgumentNullException("table", "table cannot be null");
+			}
+
 			const string UniqueConstraintsQuery = @"
 SELECT
 	DatabaseConstraints.CONSTRAINT_NAME AS ConstraintName,
@@ -182,13 +190,13 @@ WHERE
 						if (table.Constraints.Any(constraint => constraint.Name == name))
 						{
 							// Add the column to the constraint
-							table.Constraints.Single(constraint => constraint.Name == name).AddColumn(columnName);
+							table.Constraints.Single(constraint => constraint.Name == name).AddColumn(table.GetColumn(columnName));
 						}
 						else
 						{
 							// Build the new constraint
 							Constraint newConstraint = new Constraint(name, table, type, isDeferrable, initiallyDeferred);
-							newConstraint.AddColumn(columnName);
+							newConstraint.AddColumn(table.GetColumn(columnName));
 						}
 					}
 				}
@@ -202,7 +210,15 @@ WHERE
 		/// <param name="connection">The connection.</param>
 		public static void PopulateCheckConstraints(Table table, SqlConnection connection)
 		{
-			throw new NotImplementedException("Check constraints not yet implemented");
+			if (table == null)
+			{
+				throw new ArgumentNullException("table", "table cannot be null");
+			}
+
+			if (connection == null)
+			{
+				throw new ArgumentNullException("connection", "connection cannot be null");
+			}
 		}
 
 		/// <summary>
@@ -217,6 +233,11 @@ WHERE
 		/// </exception>
 		public static void PopulateReferentialConstraints(IEnumerable<Table> tables, SqlConnection connection)
 		{
+			if (tables == null)
+			{
+				throw new ArgumentNullException("tables", "tables cannot be null");
+			}
+
 			const string ReferentialConstraintsQuery = @"
 SELECT
 	DatabaseConstraints.CONSTRAINT_NAME AS ConstraintName,
@@ -265,7 +286,7 @@ WHERE
 
 							// Create the constraint
 							Constraint constraint = new Constraint(name, table, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
-							constraint.AddColumn(columnName);
+							constraint.AddColumn(table.GetColumn(columnName));
 
 							// Find the table the foreign key refers to
 							Table referencedTable = tables.SingleOrDefault(t =>
@@ -276,7 +297,7 @@ WHERE
 							// Check it exists
 							if (referencedTable == null)
 							{
-								throw new InvalidOperationException(string.Format("The foreign key refers to a table which doesn't exist in the collection ({0}.{1}.{2})", referencedCatalog, referencedSchema, referencedTableName));
+								throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The foreign key refers to a table which doesn't exist in the collection ({0}.{1}.{2})", referencedCatalog, referencedSchema, referencedTableName));
 							}
 
 							// Find the column on the table
@@ -285,7 +306,7 @@ WHERE
 							// Check it exists
 							if (referencedColumn == null)
 							{
-								throw new InvalidOperationException(string.Format("The foreign key refers to a column which hasn't been populated for the given table ({0}.{1})", referencedTable, referencedColumnName));
+								throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The foreign key refers to a column which hasn't been populated for the given table ({0}.{1})", referencedTable, referencedColumnName));
 							}
 
 							// Assign the referenced column to the constraint
@@ -294,15 +315,6 @@ WHERE
 					}
 				}
 			}
-		}
-
-		/// <summary>
-		/// Adds the column to this constraint's list of subject columns.
-		/// </summary>
-		/// <param name="columnName">Name of the column.</param>
-		public void AddColumn(string columnName)
-		{
-			this.AddColumn(this.Table.Columns.Single(column => column.Name == columnName));
 		}
 
 		/// <summary>
@@ -322,7 +334,7 @@ WHERE
 		/// </returns>
 		public override string ToString()
 		{
-			return string.Format("{0} ({1})", this.Name, string.Join(", ", this.Columns.Select<Column, string>(column => column.Name)));
+			return string.Format(CultureInfo.InvariantCulture, "{0} ({1})", this.Name, string.Join(", ", this.Columns.Select<Column, string>(column => column.Name)));
 		}
 	}
 }

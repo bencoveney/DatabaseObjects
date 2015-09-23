@@ -1,14 +1,15 @@
 ﻿namespace DatabaseObjects
 {
 	using System;
+	using System.Globalization;
 
 	/// <summary>
 	/// Represents a data type from the database
 	/// </summary>
-	public class Type
+	public class SqlType
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="Type"/> class.
+		/// Initializes a new instance of the <see cref="SqlType"/> class.
 		/// </summary>
 		/// <param name="dataType">Type of the data.</param>
 		/// <param name="characterMaximumLength">Maximum length of the character.</param>
@@ -18,7 +19,7 @@
 		/// <param name="numericPrecisionRadix">The numeric precision radix.</param>
 		/// <param name="numericScale">The numeric scale.</param>
 		/// <param name="dateTimePrecision">The date time precision.</param>
-		public Type(string dataType, int? characterMaximumLength, string characterSetName, string collationName, int? numericPrecision, int? numericPrecisionRadix, int? numericScale, int? dateTimePrecision)
+		public SqlType(string dataType, int? characterMaximumLength, string characterSetName, string collationName, int? numericPrecision, int? numericPrecisionRadix, int? numericScale, int? dateTimePrecision)
 		{
 			this.DataType = dataType;
 			this.CharacterMaximumLength = characterMaximumLength;
@@ -138,12 +139,12 @@
 		{
 			get
 			{
-				switch (this.DataType.ToLower())
+				switch (this.DataType.ToUpperInvariant())
 				{
-					case "bigint":
-					case "int":
-					case "smallint":
-					case "tinyint":
+					case "BIGINT":
+					case "INT":
+					case "SMALLINT":
+					case "TINYINT":
 						return true;
 					default:
 						return false;
@@ -161,14 +162,14 @@
 		{
 			get
 			{
-				switch (this.DataType.ToLower())
+				switch (this.DataType.ToUpperInvariant())
 				{
-					case "char":
-					case "nchar":
-					case "varchar":
-					case "nvarchar":
-					case "text":
-					case "ntext":
+					case "CHAR":
+					case "NCHAR":
+					case "VARCHAR":
+					case "NVARCHAR":
+					case "TEXT":
+					case "NTEXT":
 						return true;
 					default:
 						return false;
@@ -180,74 +181,77 @@
 		/// Gets a model system type from the column's data type.
 		/// </summary>
 		/// <returns>A model system type.</returns>
-		public System.Type GetSystemType()
+		public System.Type SystemType
 		{
+			get
+			{
 			// TODO full list available here: https://msdn.microsoft.com/en-us/library/cc716729%28v=vs.110%29.aspx
 			// TODO Xml not implemented
-			switch (this.DataType.ToLower())
+			switch (this.DataType.ToUpperInvariant())
 			{
-				case "bit":
+				case "BIT":
 					return typeof(bool);
 
-				case "bigint":
+				case "BIGINT":
 					return typeof(long);
 
-				case "int":
+				case "INT":
 					return typeof(int);
 
-				case "smallint":
+				case "SMALLINT":
 					return typeof(short);
 
-				case "tinyint":
+				case "TINYINT":
 					return typeof(byte);
 
-				case "char":
-				case "nchar":
-				case "varchar":
-				case "nvarchar":
-				case "text":
-				case "ntext":
+				case "CHAR":
+				case "NCHAR":
+				case "VARCHAR":
+				case "NVARCHAR":
+				case "TEXT":
+				case "NTEXT":
 					return typeof(string);
 
-				case "datetime":
-				case "datetime2":
-				case "smalldatetime":
+				case "DATETIME":
+				case "DATETIME2":
+				case "SMALLDATETIME":
 					return typeof(DateTime);
 
-				case "datetimeoffset":
+				case "DATETIMEOFFSET":
 					return typeof(DateTimeOffset);
 
-				case "decimal":
-				case "money":
-				case "numeric":
-				case "smallmoney":
+				case "DECIMAL":
+				case "MONEY":
+				case "NUMERIC":
+				case "SMALLMONEY":
 					return typeof(decimal);
 
-				case "float":
+				case "FLOAT":
 					return typeof(double);
 
-				case "real":
+				case "REAL":
 					return typeof(float);
 
 				// TODO filestream ?
-				case "binary":
-				case "image":
-				case "rowversion":
-				case "timestamp":
-				case "varbinary":
+				case "BINARY":
+				case "IMAGE":
+				case "ROWVERSION":
+				case "TIMESTAMP":
+				case "VARBINARY":
 					return typeof(byte[]);
 
-				case "sql_variant":
+				case "SQL_VARIANT":
 					return typeof(object);
 
-				case "time":
+				case "TIME":
 					return typeof(TimeSpan);
 
-				case "uniqueidentifier":
+				case "UNIQUEIDENTIFIER":
 					return typeof(Guid);
 
 				default:
 					return typeof(object);
+			}
 			}
 		}
 
@@ -260,15 +264,15 @@
 		public override string ToString()
 		{
 			// Add the text length to string data types
-			switch (this.DataType)
+			switch (this.DataType.ToUpperInvariant())
 			{
-				case "char":
-				case "nchar":
-				case "varchar":
-				case "nvarchar":
-				case "text":
-				case "ntext":
-					return string.Format("{0} ({1})", this.DataType, this.CharacterMaximumLength);
+				case "CHAR":
+				case "NCHAR":
+				case "VARCHAR":
+				case "NVARCHAR":
+				case "TEXT":
+				case "NTEXT":
+					return string.Format(CultureInfo.InvariantCulture, "{0} ({1})", this.DataType, this.CharacterMaximumLength);
 
 				default:
 					return this.DataType;

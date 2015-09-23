@@ -2,12 +2,18 @@
 {
 	using System;
 	using System.Data.SqlClient;
+	using System.Globalization;
 
 	/// <summary>
 	/// The mode or direction data passes through this parameter in
 	/// </summary>
 	public enum ParameterMode
 	{
+		/// <summary>
+		/// Not a known routine type
+		/// </summary>
+		Unknown = 0,
+
 		/// <summary>
 		/// The parameter passes data in to the procedure
 		/// </summary>
@@ -60,12 +66,17 @@ WHERE
 		/// <param name="ordinalPosition">The ordinal position.</param>
 		/// <param name="mode">The mode.</param>
 		/// <param name="type">The type.</param>
-		public RoutineParameter(string name, Routine routine, int ordinalPosition, ParameterMode mode, Type type)
+		public RoutineParameter(string name, Routine routine, int ordinalPosition, ParameterMode mode, SqlType type)
 		{
+			if (routine == null)
+			{
+				throw new ArgumentNullException("routine", "routine cannot be null");
+			}
+
 			this.Name = name;
 			this.OrdinalPosition = ordinalPosition;
 			this.Mode = mode;
-			this.Type = type;
+			this.DataType = type;
 
 			routine.Parameters.Add(this);
 		}
@@ -112,7 +123,7 @@ WHERE
 		/// <value>
 		/// The type.
 		/// </value>
-		public Type Type
+		public SqlType DataType
 		{
 			get;
 			private set;
@@ -125,6 +136,11 @@ WHERE
 		/// <param name="connection">The connection.</param>
 		public static void PopulateParameters(Routine routine, SqlConnection connection)
 		{
+			if (routine == null)
+			{
+				throw new ArgumentNullException("routine", "routine cannot be null");
+			}
+
 			// Query the database for the column data
 			using (SqlCommand command = new SqlCommand(RoutineParametersQuery, connection))
 			{
@@ -155,15 +171,15 @@ WHERE
 						string collationName = result.GetNullableString("COLLATION_NAME");
 
 						// Build the proper data structure for return type
-						Type returnType = new Type(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+						SqlType returnType = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 
 						// Remove the @ from the front of the name
-						if (name.IndexOf("@") == 0)
+						if (name.IndexOf("@", StringComparison.Ordinal) == 0)
 						{
 							name = name.Substring(1);
 						}
 
-						RoutineParameter parameter = new RoutineParameter(name, routine, ordinalPosition, mode, returnType);
+						routine.Parameters.Add(new RoutineParameter(name, routine, ordinalPosition, mode, returnType));
 					}
 				}
 			}
@@ -177,7 +193,7 @@ WHERE
 		/// </returns>
 		public override string ToString()
 		{
-			return string.Format("{0} ({1})", this.Name, this.Type);
+			return string.Format(CultureInfo.InvariantCulture, "{0} ({1})", this.Name, this.DataType);
 		}
 	}
 }

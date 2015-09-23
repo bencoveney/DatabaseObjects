@@ -1,20 +1,33 @@
 ﻿namespace DatabaseObjects
 {
 	using System.Collections.Generic;
+	using System.Collections.ObjectModel;
 	using System.Linq;
 
 	/// <summary>
 	/// Singleton class to represent an entire database and it's objects.
 	/// </summary>
-	public static class Model
+	public class Model
 	{
 		/// <summary>
-		/// Initializes static members of the <see cref="Model"/> class.
+		/// The tables
 		/// </summary>
-		static Model()
+		private Collection<Table> tables;
+
+		/// <summary>
+		/// The routines
+		/// </summary>
+		private Collection<Routine> routines;
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="Model" /> class.
+		/// </summary>
+		/// <param name="tables">The tables collection.</param>
+		/// <param name="routines">The routines collection.</param>
+		public Model(Collection<Table> tables, Collection<Routine> routines)
 		{
-			Model.Tables = new List<Table>();
-			Model.Routines = new List<Routine>();
+			this.tables = tables;
+			this.routines = routines;
 		}
 
 		/// <summary>
@@ -23,10 +36,12 @@
 		/// <value>
 		/// The tables.
 		/// </value>
-		public static List<Table> Tables
+		public Collection<Table> Tables
 		{
-			get;
-			private set;
+			get
+			{
+				return this.tables;
+			}
 		}
 
 		/// <summary>
@@ -35,10 +50,12 @@
 		/// <value>
 		/// The routines.
 		/// </value>
-		public static List<Routine> Routines
+		public Collection<Routine> Routines
 		{
-			get;
-			private set;
+			get
+			{
+				return this.routines;
+			}
 		}
 
 		/// <summary>
@@ -47,11 +64,11 @@
 		/// <value>
 		/// The columns.
 		/// </value>
-		public static IEnumerable<Column> AllColumns
+		public IEnumerable<Column> AllColumns
 		{
 			get
 			{
-				return Tables.SelectMany(table => table.Columns);
+				return this.Tables.SelectMany(table => table.Columns);
 			}
 		}
 
@@ -61,11 +78,11 @@
 		/// <value>
 		/// The constraints.
 		/// </value>
-		public static IEnumerable<Constraint> AllConstraints
+		public IEnumerable<Constraint> AllConstraints
 		{
 			get
 			{
-				return Tables.SelectMany(table => table.Constraints);
+				return this.Tables.SelectMany(table => table.Constraints);
 			}
 		}
 
@@ -75,11 +92,11 @@
 		/// <value>
 		/// All parameters.
 		/// </value>
-		public static IEnumerable<RoutineParameter> AllParameters
+		public IEnumerable<RoutineParameter> AllParameters
 		{
 			get
 			{
-				return Routines.SelectMany(routine => routine.Parameters);
+				return this.Routines.SelectMany(routine => routine.Parameters);
 			}
 		}
 
@@ -87,12 +104,10 @@
 		/// Loads the objects from the database.
 		/// </summary>
 		/// <param name="connectionString">The connection string.</param>
-		public static void LoadFromDatabase(string connectionString)
+		/// <returns>The model.</returns>
+		public static Model LoadFromDatabase(string connectionString)
 		{
-
-			// Load the database objects
-			Table.LoadTables(connectionString);
-			Routine.LoadRoutines(connectionString);
+			return new Model(Table.LoadFromDatabase(connectionString), Routine.LoadFromDatabase(connectionString));
 		}
 	}
 }
