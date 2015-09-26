@@ -62,23 +62,16 @@ WHERE
 		/// Initializes a new instance of the <see cref="RoutineParameter" /> class.
 		/// </summary>
 		/// <param name="name">The name.</param>
-		/// <param name="routine">The routine.</param>
 		/// <param name="ordinalPosition">The ordinal position.</param>
 		/// <param name="mode">The mode.</param>
 		/// <param name="type">The type.</param>
-		public RoutineParameter(string name, Routine routine, int ordinalPosition, ParameterMode mode, SqlType type)
+		/// <exception cref="System.ArgumentNullException">routine;routine cannot be null</exception>
+		public RoutineParameter(string name, int ordinalPosition, ParameterMode mode, SqlType type)
 		{
-			if (routine == null)
-			{
-				throw new ArgumentNullException("routine", "routine cannot be null");
-			}
-
 			this.Name = name;
 			this.OrdinalPosition = ordinalPosition;
 			this.Mode = mode;
 			this.DataType = type;
-
-			routine.Parameters.Add(this);
 		}
 
 		/// <summary>
@@ -179,7 +172,7 @@ WHERE
 							name = name.Substring(1);
 						}
 
-						routine.Parameters.Add(new RoutineParameter(name, routine, ordinalPosition, mode, returnType));
+						routine.Parameters.Add(new RoutineParameter(name, ordinalPosition, mode, returnType));
 					}
 				}
 			}

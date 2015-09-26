@@ -1,14 +1,12 @@
-﻿using DatabaseObjects;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FunctionalTests
+﻿namespace FunctionalTests
 {
-	[TestClass()]
+	using DatabaseObjects;
+	using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+	/// <summary>
+	/// Provides common utilities for the assembly
+	/// </summary>
+	[TestClass]
 	public class AssemblyUtilities
 	{
 		/// <summary>
@@ -17,11 +15,17 @@ namespace FunctionalTests
 		private const string ConnectionString = @"Data Source=BENSDESKTOP\SQLEXPRESS;Initial Catalog=ItemsDB;Integrated Security=True";
 
 		/// <summary>
-		/// The database model used to test functionality.
+		/// Gets the shared database model.
+		/// After initialization this model should not be altered manually.
 		/// </summary>
-		public static Model DatabaseModel;
+		public static Model DatabaseModel { get; private set; }
 
-		[AssemblyInitialize()]
+		/// <summary>
+		/// Called when the test assembly is initialized.
+		/// Populates the shared Model object.
+		/// </summary>
+		/// <param name="testContext">The test context.</param>
+		[AssemblyInitialize]
 		public static void Initialise(TestContext testContext)
 		{
 			DatabaseModel = Model.LoadFromDatabase(ConnectionString);

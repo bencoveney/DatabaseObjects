@@ -18,7 +18,42 @@
 		/// </summary>
 		public static void Main()
 		{
-			Model.LoadFromDatabase(ConnectionString);
+			Model model = Model.LoadFromDatabase(ConnectionString);
+
+			foreach (Table table in model.Tables)
+			{
+				Console.WriteLine(table.Name);
+
+				foreach (Column column in table.Columns)
+				{
+					Console.WriteLine(column.Name);
+
+					Console.WriteLine(column.DataType.DataType);
+				}
+
+				foreach (Constraint constraint in table.Constraints)
+				{
+					Console.WriteLine(constraint.Name);
+
+					Console.WriteLine(constraint.ConstraintType);
+				}
+			}
+
+			foreach (Routine routine in model.Routines)
+			{
+				Console.WriteLine(routine.Name);
+
+				Console.WriteLine(routine.RoutineType);
+
+				foreach (RoutineParameter parameter in routine.Parameters)
+				{
+					Console.WriteLine(parameter.Name);
+
+					Console.WriteLine(parameter.Mode);
+
+					Console.WriteLine(parameter.DataType.DataType);
+				}
+			}
 
 			Console.ReadLine();
 		}

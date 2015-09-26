@@ -47,25 +47,18 @@
 		/// Initializes a new instance of the <see cref="Constraint" /> class
 		/// </summary>
 		/// <param name="name">The name.</param>
-		/// <param name="table">The table.</param>
 		/// <param name="type">The type.</param>
 		/// <param name="isDeferrable">if set to <c>true</c> [is deferrable].</param>
 		/// <param name="initiallyDeferred">if set to <c>true</c> [initially deferred].</param>
-		public Constraint(string name, Table table, ConstraintType type, bool isDeferrable, bool initiallyDeferred)
+		/// <exception cref="System.ArgumentNullException">table;table cannot be null</exception>
+		public Constraint(string name, ConstraintType type, bool isDeferrable, bool initiallyDeferred)
 		{
-			if (table == null)
-			{
-				throw new ArgumentNullException("table", "table cannot be null");
-			}
-
 			// Populate member variables
 			this.Name = name;
 			this.ConstraintType = type;
 			this.columns = new List<Column>();
 			this.IsDeferrable = isDeferrable;
 			this.InitiallyDeferred = initiallyDeferred;
-
-			table.Constraints.Add(this);
 		}
 
 		/// <summary>
@@ -195,7 +188,7 @@ WHERE
 						else
 						{
 							// Build the new constraint
-							Constraint newConstraint = new Constraint(name, table, type, isDeferrable, initiallyDeferred);
+							Constraint newConstraint = new Constraint(name, type, isDeferrable, initiallyDeferred);
 							newConstraint.AddColumn(table.GetColumn(columnName));
 						}
 					}
@@ -285,7 +278,7 @@ WHERE
 							string referencedColumnName = (string)result["ReferencedColumn"];
 
 							// Create the constraint
-							Constraint constraint = new Constraint(name, table, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
+							Constraint constraint = new Constraint(name, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
 							constraint.AddColumn(table.GetColumn(columnName));
 
 							// Find the table the foreign key refers to
