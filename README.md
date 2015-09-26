@@ -74,4 +74,11 @@ The project includes The following projects:
    * **Functional Tests** - Tests which exercise the codes core functionality.
    * **Test Database** - A database project providing the schema for the functional tests.
 
-The database objects class adheres to all rules in the Microsoft managed code analysis rulesets and a subset of StyleCop's coding standards ruleset (included in the repository).
+The code projects adhere to all rules in the Microsoft managed code analysis rulesets and a subset of StyleCop's coding standards ruleset (included in the repository).
+
+The following tasks would be good items to work on:
+ * Support for additional database objects.
+ * Compatibility with other Databases (Oracle, MySql...).
+ * Refactor constraints, parameters etc where a "Type" enumeration is used to be either:
+   * Classes derived from a common base.
+   * Classes implementing a common interface.

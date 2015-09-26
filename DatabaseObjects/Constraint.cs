@@ -190,6 +190,8 @@ WHERE
 							// Build the new constraint
 							Constraint newConstraint = new Constraint(name, type, isDeferrable, initiallyDeferred);
 							newConstraint.AddColumn(table.GetColumn(columnName));
+							
+							table.Constraints.Add(newConstraint);
 						}
 					}
 				}
@@ -304,6 +306,8 @@ WHERE
 
 							// Assign the referenced column to the constraint
 							constraint.ReferencedColumn = referencedColumn;
+
+							table.Constraints.Add(constraint);
 						}
 					}
 				}
