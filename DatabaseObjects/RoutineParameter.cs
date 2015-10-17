@@ -1,7 +1,7 @@
 ﻿namespace DatabaseObjects
 {
 	using System;
-	using System.Data.SqlClient;
+	using System.Data;
 	using System.Globalization;
 
 	/// <summary>
@@ -35,29 +35,6 @@
 	/// </summary>
 	public class RoutineParameter
 	{
-		/// <summary>
-		/// Gets the date this routine was created.
-		/// </summary>
-		private const string RoutineParametersQuery = @"
-SELECT
-	RoutineParameters.PARAMETER_NAME,
-	RoutineParameters.ORDINAL_POSITION,
-	RoutineParameters.PARAMETER_MODE,
-	RoutineParameters.DATA_TYPE,
-	RoutineParameters.CHARACTER_MAXIMUM_LENGTH,
-	RoutineParameters.COLLATION_NAME,
-	RoutineParameters.CHARACTER_SET_NAME,
-	RoutineParameters.NUMERIC_PRECISION,
-	RoutineParameters.NUMERIC_PRECISION_RADIX,
-	RoutineParameters.NUMERIC_SCALE,
-	RoutineParameters.DATETIME_PRECISION
-FROM
-	INFORMATION_SCHEMA.PARAMETERS AS RoutineParameters
-WHERE
-	RoutineParameters.SPECIFIC_CATALOG = @RoutineCatalog
-	AND RoutineParameters.SPECIFIC_SCHEMA = @RoutineSchema
-	AND RoutineParameters.SPECIFIC_NAME = @RoutineName";
-
 		/// <summary>
 		/// Initializes a new instance of the <see cref="RoutineParameter" /> class.
 		/// </summary>
@@ -126,54 +103,56 @@ WHERE
 		/// Loads the parameters from the database for a specific routine
 		/// </summary>
 		/// <param name="routine">The routine.</param>
-		/// <param name="connection">The connection.</param>
-		public static void PopulateParameters(Routine routine, SqlConnection connection)
+		/// <param name="dataProvider">The data provider.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// routine;routine cannot be null
+		/// or
+		/// dataProvider;dataProvider cannot be null
+		/// </exception>
+		public static void PopulateParameters(Routine routine, IObjectDataProvider dataProvider)
 		{
 			if (routine == null)
 			{
 				throw new ArgumentNullException("routine", "routine cannot be null");
 			}
 
-			// Query the database for the column data
-			using (SqlCommand command = new SqlCommand(RoutineParametersQuery, connection))
+			if (dataProvider == null)
 			{
-				command.Parameters.AddWithValue("RoutineCatalog", routine.Catalog);
-				command.Parameters.AddWithValue("RoutineSchema", routine.Schema);
-				command.Parameters.AddWithValue("RoutineName", routine.Name);
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
+			}
 
-				using (SqlDataReader result = command.ExecuteReader())
+			using (IDataReader result = dataProvider.LoadParametersDataForRoutine(routine))
+			{
+				while (result.Read())
 				{
-					while (result.Read())
+					// Read the result data for the routine parameter
+					string name = (string)result["PARAMETER_NAME"];
+					int ordinalPosition = (int)result["ORDINAL_POSITION"];
+					string modeAsText = (string)result["PARAMETER_MODE"];
+
+					// Build the proper data structure for parameter mode
+					ParameterMode mode = (ParameterMode)Enum.Parse(typeof(ParameterMode), modeAsText, true);
+
+					// Read the result data for the routine's return type
+					string dataType = (string)result["DATA_TYPE"];
+					int? characterMaximumLength = result.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
+					int? numericPrecision = result.GetNullable<int>("NUMERIC_PRECISION");
+					int? numericPrecisionRadix = result.GetNullable<int>("NUMERIC_PRECISION_RADIX");
+					int? numericScale = result.GetNullable<int>("NUMERIC_SCALE");
+					int? dateTimePrecision = result.GetNullable<int>("DATETIME_PRECISION");
+					string characterSetName = result.GetNullableString("CHARACTER_SET_NAME");
+					string collationName = result.GetNullableString("COLLATION_NAME");
+
+					// Build the proper data structure for return type
+					SqlType returnType = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+
+					// Remove the @ from the front of the name
+					if (name.IndexOf("@", StringComparison.Ordinal) == 0)
 					{
-						// Read the result data for the routine parameter
-						string name = (string)result["PARAMETER_NAME"];
-						int ordinalPosition = (int)result["ORDINAL_POSITION"];
-						string modeAsText = (string)result["PARAMETER_MODE"];
-
-						// Build the proper data structure for parameter mode
-						ParameterMode mode = (ParameterMode)Enum.Parse(typeof(ParameterMode), modeAsText, true);
-
-						// Read the result data for the routine's return type
-						string dataType = (string)result["DATA_TYPE"];
-						int? characterMaximumLength = result.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
-						int? numericPrecision = result.GetNullable<int>("NUMERIC_PRECISION");
-						int? numericPrecisionRadix = result.GetNullable<int>("NUMERIC_PRECISION_RADIX");
-						int? numericScale = result.GetNullable<int>("NUMERIC_SCALE");
-						int? dateTimePrecision = result.GetNullable<int>("DATETIME_PRECISION");
-						string characterSetName = result.GetNullableString("CHARACTER_SET_NAME");
-						string collationName = result.GetNullableString("COLLATION_NAME");
-
-						// Build the proper data structure for return type
-						SqlType returnType = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
-
-						// Remove the @ from the front of the name
-						if (name.IndexOf("@", StringComparison.Ordinal) == 0)
-						{
-							name = name.Substring(1);
-						}
-
-						routine.Parameters.Add(new RoutineParameter(name, ordinalPosition, mode, returnType));
+						name = name.Substring(1);
 					}
+
+					routine.Parameters.Add(new RoutineParameter(name, ordinalPosition, mode, returnType));
 				}
 			}
 		}

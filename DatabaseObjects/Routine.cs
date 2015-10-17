@@ -1,9 +1,8 @@
 ﻿namespace DatabaseObjects
 {
 	using System;
-	using System.Collections.Generic;
 	using System.Collections.ObjectModel;
-	using System.Data.SqlClient;
+	using System.Data;
 	using System.Globalization;
 
 	/// <summary>
@@ -32,29 +31,6 @@
 	/// </summary>
 	public class Routine
 	{
-		/// <summary>
-		/// Query to find the routines in the database
-		/// </summary>
-		private const string RoutinesQuery = @"
-SELECT
-	DatabaseRoutines.SPECIFIC_CATALOG,
-	DatabaseRoutines.SPECIFIC_SCHEMA,
-	DatabaseRoutines.SPECIFIC_NAME,
-	DatabaseRoutines.ROUTINE_TYPE,
-	DatabaseRoutines.DATA_TYPE,
-	DatabaseRoutines.CHARACTER_MAXIMUM_LENGTH,
-	DatabaseRoutines.COLLATION_NAME,
-	DatabaseRoutines.CHARACTER_SET_NAME,
-	DatabaseRoutines.NUMERIC_PRECISION,
-	DatabaseRoutines.NUMERIC_PRECISION_RADIX,
-	DatabaseRoutines.NUMERIC_SCALE,
-	DatabaseRoutines.DATETIME_PRECISION,
-	DatabaseRoutines.ROUTINE_DEFINITION,
-	DatabaseRoutines.CREATED,
-	DatabaseRoutines.LAST_ALTERED
-FROM
-	INFORMATION_SCHEMA.ROUTINES AS DatabaseRoutines";
-
 		/// <summary>
 		/// The parameters
 		/// </summary>
@@ -198,65 +174,64 @@ FROM
 		/// <summary>
 		/// Loads the routines from the database.
 		/// </summary>
-		/// <param name="connectionString">The connection string.</param>
-		/// <returns>The loaded routines.</returns>
-		public static Collection<Routine> LoadFromDatabase(string connectionString)
+		/// <param name="dataProvider">The data provider.</param>
+		/// <returns>
+		/// The loaded routines.
+		/// </returns>
+		/// <exception cref="System.ArgumentNullException">dataProvider;dataProvider cannot be null</exception>
+		public static Collection<Routine> LoadFromDatabase(IObjectDataProvider dataProvider)
 		{
 			Collection<Routine> result = new Collection<Routine>();
 
-			using (SqlConnection connection = new SqlConnection(connectionString))
+			if (dataProvider == null)
 			{
-				connection.Open();
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
+			}
 
-				// Query the database for the table data
-				using (SqlCommand command = new SqlCommand(RoutinesQuery, connection))
+			using (IDataReader reader = dataProvider.LoadRoutineData())
+			{
+				while (reader.Read())
 				{
-					using (SqlDataReader reader = command.ExecuteReader())
+					// Read the result data for the routine
+					string catalog = (string)reader["SPECIFIC_CATALOG"];
+					string schema = (string)reader["SPECIFIC_SCHEMA"];
+					string name = (string)reader["SPECIFIC_NAME"];
+					string routineTypeAsText = (string)reader["ROUTINE_TYPE"];
+					string definition = (string)reader["ROUTINE_DEFINITION"];
+					DateTime created = (DateTime)reader["CREATED"];
+					DateTime lastAltered = (DateTime)reader["LAST_ALTERED"];
+
+					// Build the proper data structure for routine type
+					RoutineType routineType = (RoutineType)Enum.Parse(typeof(RoutineType), routineTypeAsText, true);
+
+					// Build the proper data structure for return type
+					SqlType returnType = null;
+					if (!reader.IsDBNull("DATA_TYPE"))
 					{
-						while (reader.Read())
-						{
-							// Read the result data for the routine
-							string catalog = (string)reader["SPECIFIC_CATALOG"];
-							string schema = (string)reader["SPECIFIC_SCHEMA"];
-							string name = (string)reader["SPECIFIC_NAME"];
-							string routineTypeAsText = (string)reader["ROUTINE_TYPE"];
-							string definition = (string)reader["ROUTINE_DEFINITION"];
-							DateTime created = (DateTime)reader["CREATED"];
-							DateTime lastAltered = (DateTime)reader["LAST_ALTERED"];
+						// Read the result data for the routine's return type
+						string dataType = (string)reader["DATA_TYPE"];
+						int? characterMaximumLength = reader.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
+						int? numericPrecision = reader.GetNullable<int>("NUMERIC_PRECISION");
+						int? numericPrecisionRadix = reader.GetNullable<int>("NUMERIC_PRECISION_RADIX");
+						int? numericScale = reader.GetNullable<int>("NUMERIC_SCALE");
+						int? dateTimePrecision = reader.GetNullable<int>("DATETIME_PRECISION");
+						string characterSetName = reader.GetNullableString("CHARACTER_SET_NAME");
+						string collationName = reader.GetNullableString("COLLATION_NAME");
 
-							// Build the proper data structure for routine type
-							RoutineType routineType = (RoutineType)Enum.Parse(typeof(RoutineType), routineTypeAsText, true);
-
-							// Build the proper data structure for return type
-							SqlType returnType = null;
-							if (!reader.IsDBNull("DATA_TYPE"))
-							{
-								// Read the result data for the routine's return type
-								string dataType = (string)reader["DATA_TYPE"];
-								int? characterMaximumLength = reader.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
-								int? numericPrecision = reader.GetNullable<int>("NUMERIC_PRECISION");
-								int? numericPrecisionRadix = reader.GetNullable<int>("NUMERIC_PRECISION_RADIX");
-								int? numericScale = reader.GetNullable<int>("NUMERIC_SCALE");
-								int? dateTimePrecision = reader.GetNullable<int>("DATETIME_PRECISION");
-								string characterSetName = reader.GetNullableString("CHARACTER_SET_NAME");
-								string collationName = reader.GetNullableString("COLLATION_NAME");
-
-								returnType = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
-							}
-
-							// Build the new routine
-							Routine routine = new Routine(catalog, schema, name, routineType, returnType, definition, created, lastAltered);
-
-							result.Add(routine);
-						}
+						returnType = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 					}
-				}
 
-				// Populate parameters
-				foreach (Routine routine in result)
-				{
-					RoutineParameter.PopulateParameters(routine, connection);
+					// Build the new routine
+					Routine routine = new Routine(catalog, schema, name, routineType, returnType, definition, created, lastAltered);
+
+					result.Add(routine);
 				}
+			}
+
+			// Populate parameters
+			foreach (Routine routine in result)
+			{
+				RoutineParameter.PopulateParameters(routine, dataProvider);
 			}
 
 			return result;

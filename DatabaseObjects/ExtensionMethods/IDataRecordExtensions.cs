@@ -1,13 +1,14 @@
 ﻿namespace DatabaseObjects
 {
 	using System;
+	using System.Data;
 	using System.Data.SqlClient;
 	using System.Globalization;
 
 	/// <summary>
 	/// Extension methods for the SQL Data Reader class
 	/// </summary>
-	public static class SqlDataReaderExtensions
+	public static class IDataRecordExtensions
 	{
 		/// <summary>
 		/// Gets a (potentially null) string safely.
@@ -15,7 +16,7 @@
 		/// <param name="reader">The reader.</param>
 		/// <param name="columnName">Name of the column.</param>
 		/// <returns>The value in the specified column.</returns>
-		public static string GetNullableString(this SqlDataReader reader, string columnName)
+		public static string GetNullableString(this IDataRecord reader, string columnName)
 		{
 			if (reader == null)
 			{
@@ -31,7 +32,7 @@
 		/// <param name="reader">The reader.</param>
 		/// <param name="columnOrdinal">The column ordinal.</param>
 		/// <returns>The value in the specified column.</returns>
-		public static string GetNullableString(this SqlDataReader reader, int columnOrdinal)
+		public static string GetNullableString(this IDataRecord reader, int columnOrdinal)
 		{
 			if (reader == null)
 			{
@@ -48,7 +49,7 @@
 		/// <param name="reader">The reader.</param>
 		/// <param name="columnName">Name of the column.</param>
 		/// <returns>The value in the specified column.</returns>
-		public static T? GetNullable<T>(this SqlDataReader reader, string columnName) where T : struct
+		public static T? GetNullable<T>(this IDataRecord reader, string columnName) where T : struct
 		{
 			if (reader == null)
 			{
@@ -65,7 +66,7 @@
 		/// <param name="reader">The reader.</param>
 		/// <param name="columnOrdinal">The column ordinal.</param>
 		/// <returns>The value in the specified column.</returns>
-		public static T? GetNullable<T>(this SqlDataReader reader, int columnOrdinal) where T : struct
+		public static T? GetNullable<T>(this IDataRecord reader, int columnOrdinal) where T : struct
 		{
 			if (reader == null)
 			{
@@ -81,7 +82,7 @@
 		/// <param name="reader">The reader.</param>
 		/// <param name="columnName">Name of the column.</param>
 		/// <returns>A value indicating whether the column is null</returns>
-		public static bool IsDBNull(this SqlDataReader reader, string columnName)
+		public static bool IsDBNull(this IDataRecord reader, string columnName)
 		{
 			if (reader == null)
 			{

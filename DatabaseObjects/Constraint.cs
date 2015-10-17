@@ -2,6 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Data;
 	using System.Data.SqlClient;
 	using System.Globalization;
 	using System.Linq;
@@ -133,66 +134,52 @@
 		/// Loads unique and primary key constraints from the database.
 		/// </summary>
 		/// <param name="table">The table.</param>
-		/// <param name="connection">The connection.</param>
-		public static void PopulateUniqueConstraints(Table table, SqlConnection connection)
+		/// <param name="dataProvider">The data provider.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// table;table cannot be null
+		/// or
+		/// dataProvider;dataProvider cannot be null
+		/// </exception>
+		public static void PopulateUniqueConstraints(Table table, IObjectDataProvider dataProvider)
 		{
 			if (table == null)
 			{
 				throw new ArgumentNullException("table", "table cannot be null");
 			}
 
-			const string UniqueConstraintsQuery = @"
-SELECT
-	DatabaseConstraints.CONSTRAINT_NAME AS ConstraintName,
-	DatabaseConstraints.CONSTRAINT_TYPE AS Type,
-	ConstrainedColumn.COLUMN_NAME AS ColumnName,
-	DatabaseConstraints.IS_DEFERRABLE AS IsDeferrable,
-	DatabaseConstraints.INITIALLY_DEFERRED AS InitiallyDeferred
-FROM
-	INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS DatabaseConstraints
-	INNER JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ConstrainedColumn ON DatabaseConstraints.CONSTRAINT_NAME = ConstrainedColumn.CONSTRAINT_NAME
-WHERE
-	DatabaseConstraints.CONSTRAINT_CATALOG = @TableCatalog
-	AND DatabaseConstraints.CONSTRAINT_SCHEMA = @TableSchema
-	AND DatabaseConstraints.TABLE_NAME = @TableName
-	AND CONSTRAINT_TYPE IN ('PRIMARY KEY', 'UNIQUE')";
-
-			// Query the database for the constraint data
-			using (SqlCommand command = new SqlCommand(UniqueConstraintsQuery, connection))
+			if (dataProvider == null)
 			{
-				command.Parameters.AddWithValue("TableCatalog", table.Catalog);
-				command.Parameters.AddWithValue("TableSchema", table.Schema);
-				command.Parameters.AddWithValue("TableName", table.Name);
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
+			}
 
-				using (SqlDataReader result = command.ExecuteReader())
+			using (IDataReader result = dataProvider.LoadUniqueConstraintDataForTable(table))
+			{
+				while (result.Read())
 				{
-					while (result.Read())
+					// Read the result data
+					string name = (string)result["ConstraintName"];
+					string typeAsText = (string)result["Type"];
+					string columnName = (string)result["ColumnName"];
+					bool isDeferrable = ((string)result["IsDeferrable"]).Equals("NO") ? false : true;
+					bool initiallyDeferred = ((string)result["InitiallyDeferred"]).Equals("NO") ? false : true;
+
+					// Convert the constraint type
+					ConstraintType type = (ConstraintType)Enum.Parse(typeof(ConstraintType), typeAsText.Replace(" ", string.Empty), true);
+
+					// If the constraint has already been read, then this is just an additional column
+					// Otherwise it is a new constraint
+					if (table.Constraints.Any(constraint => constraint.Name == name))
 					{
-						// Read the result data
-						string name = (string)result["ConstraintName"];
-						string typeAsText = (string)result["Type"];
-						string columnName = (string)result["ColumnName"];
-						bool isDeferrable = ((string)result["IsDeferrable"]).Equals("NO") ? false : true;
-						bool initiallyDeferred = ((string)result["InitiallyDeferred"]).Equals("NO") ? false : true;
-
-						// Convert the constraint type
-						ConstraintType type = (ConstraintType)Enum.Parse(typeof(ConstraintType), typeAsText.Replace(" ", string.Empty), true);
-
-						// If the constraint has already been read, then this is just an additional column
-						// Otherwise it is a new constraint
-						if (table.Constraints.Any(constraint => constraint.Name == name))
-						{
-							// Add the column to the constraint
-							table.Constraints.Single(constraint => constraint.Name == name).AddColumn(table.GetColumn(columnName));
-						}
-						else
-						{
-							// Build the new constraint
-							Constraint newConstraint = new Constraint(name, type, isDeferrable, initiallyDeferred);
-							newConstraint.AddColumn(table.GetColumn(columnName));
+						// Add the column to the constraint
+						table.Constraints.Single(constraint => constraint.Name == name).AddColumn(table.GetColumn(columnName));
+					}
+					else
+					{
+						// Build the new constraint
+						Constraint newConstraint = new Constraint(name, type, isDeferrable, initiallyDeferred);
+						newConstraint.AddColumn(table.GetColumn(columnName));
 							
-							table.Constraints.Add(newConstraint);
-						}
+						table.Constraints.Add(newConstraint);
 					}
 				}
 			}
@@ -202,17 +189,20 @@ WHERE
 		/// Loads check constraints from the database.
 		/// </summary>
 		/// <param name="table">The table.</param>
-		/// <param name="connection">The connection.</param>
-		public static void PopulateCheckConstraints(Table table, SqlConnection connection)
+		/// <param name="dataProvider">The data provider.</param>
+		/// <exception cref="System.ArgumentNullException">table;table cannot be null
+		/// or
+		/// dataProvider;dataProvider cannot be null</exception>
+		public static void PopulateCheckConstraints(Table table, IObjectDataProvider dataProvider)
 		{
 			if (table == null)
 			{
 				throw new ArgumentNullException("table", "table cannot be null");
 			}
 
-			if (connection == null)
+			if (dataProvider == null)
 			{
-				throw new ArgumentNullException("connection", "connection cannot be null");
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
 			}
 		}
 
@@ -220,95 +210,74 @@ WHERE
 		/// Loads foreign key constraints from the database.
 		/// </summary>
 		/// <param name="tables">The tables.</param>
-		/// <param name="connection">The connection.</param>
+		/// <param name="dataProvider">The data provider.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// tables;tables cannot be null
+		/// or
+		/// dataProvider;dataProvider cannot be null
+		/// </exception>
 		/// <exception cref="System.InvalidOperationException">
 		/// The foreign key refers to a table which doesn't exist in the collection
 		/// or
 		/// The foreign key refers to a column which hasn't been populated for the given table
 		/// </exception>
-		public static void PopulateReferentialConstraints(IEnumerable<Table> tables, SqlConnection connection)
+		public static void PopulateReferentialConstraints(IEnumerable<Table> tables, IObjectDataProvider dataProvider)
 		{
 			if (tables == null)
 			{
 				throw new ArgumentNullException("tables", "tables cannot be null");
 			}
 
-			const string ReferentialConstraintsQuery = @"
-SELECT
-	DatabaseConstraints.CONSTRAINT_NAME AS ConstraintName,
-	ConstrainedColumn.COLUMN_NAME AS ColumnName,
-	DatabaseConstraints.IS_DEFERRABLE AS IsDeferrable,
-	DatabaseConstraints.INITIALLY_DEFERRED AS InitiallyDeferred,
-	ReferencedConstraint.TABLE_CATALOG AS ReferencedCatalog,
-	ReferencedConstraint.TABLE_SCHEMA AS ReferencedSchema,
-	ReferencedConstraint.TABLE_NAME AS ReferencedTable,
-	ReferencedColumn.COLUMN_NAME AS ReferencedColumn
-FROM
-	INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS DatabaseConstraints
-	INNER JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ConstrainedColumn ON DatabaseConstraints.CONSTRAINT_NAME = ConstrainedColumn.CONSTRAINT_NAME
-	INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS ConstraintReference ON DatabaseConstraints.CONSTRAINT_NAME = ConstraintReference.CONSTRAINT_NAME
-	INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS ReferencedConstraint ON ConstraintReference.UNIQUE_CONSTRAINT_NAME = ReferencedConstraint.CONSTRAINT_NAME
-	INNER JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ReferencedColumn ON ReferencedConstraint.CONSTRAINT_NAME = ReferencedColumn.CONSTRAINT_NAME
-
-WHERE
-	DatabaseConstraints.CONSTRAINT_CATALOG = @TableCatalog
-	AND DatabaseConstraints.CONSTRAINT_SCHEMA = @TableSchema
-	AND DatabaseConstraints.TABLE_NAME = @TableName
-	AND DatabaseConstraints.CONSTRAINT_TYPE = 'FOREIGN KEY'";
+			if (dataProvider == null)
+			{
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
+			}
 
 			foreach (Table table in tables)
 			{
-				// Query the database for the constraint data
-				using (SqlCommand command = new SqlCommand(ReferentialConstraintsQuery, connection))
+				using (IDataReader result = dataProvider.LoadReferentialConstraintsDataForTable(table))
 				{
-					command.Parameters.AddWithValue("TableCatalog", table.Catalog);
-					command.Parameters.AddWithValue("TableSchema", table.Schema);
-					command.Parameters.AddWithValue("TableName", table.Name);
-
-					using (SqlDataReader result = command.ExecuteReader())
+					while (result.Read())
 					{
-						while (result.Read())
+						// Read the result data
+						string name = (string)result["ConstraintName"];
+						string columnName = (string)result["ColumnName"];
+						bool isDeferrable = ((string)result["IsDeferrable"]).Equals("NO") ? false : true;
+						bool initiallyDeferred = ((string)result["InitiallyDeferred"]).Equals("NO") ? false : true;
+						string referencedCatalog = (string)result["ReferencedCatalog"];
+						string referencedSchema = (string)result["ReferencedSchema"];
+						string referencedTableName = (string)result["ReferencedTable"];
+						string referencedColumnName = (string)result["ReferencedColumn"];
+
+						// Create the constraint
+						Constraint constraint = new Constraint(name, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
+						constraint.AddColumn(table.GetColumn(columnName));
+
+						// Find the table the foreign key refers to
+						Table referencedTable = tables.SingleOrDefault(t =>
+							t.Catalog == referencedCatalog
+							&& t.Schema == referencedSchema
+							&& t.Name == referencedTableName);
+
+						// Check it exists
+						if (referencedTable == null)
 						{
-							// Read the result data
-							string name = (string)result["ConstraintName"];
-							string columnName = (string)result["ColumnName"];
-							bool isDeferrable = ((string)result["IsDeferrable"]).Equals("NO") ? false : true;
-							bool initiallyDeferred = ((string)result["InitiallyDeferred"]).Equals("NO") ? false : true;
-							string referencedCatalog = (string)result["ReferencedCatalog"];
-							string referencedSchema = (string)result["ReferencedSchema"];
-							string referencedTableName = (string)result["ReferencedTable"];
-							string referencedColumnName = (string)result["ReferencedColumn"];
-
-							// Create the constraint
-							Constraint constraint = new Constraint(name, ConstraintType.ForeignKey, isDeferrable, initiallyDeferred);
-							constraint.AddColumn(table.GetColumn(columnName));
-
-							// Find the table the foreign key refers to
-							Table referencedTable = tables.SingleOrDefault(t =>
-								t.Catalog == referencedCatalog
-								&& t.Schema == referencedSchema
-								&& t.Name == referencedTableName);
-
-							// Check it exists
-							if (referencedTable == null)
-							{
-								throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The foreign key refers to a table which doesn't exist in the collection ({0}.{1}.{2})", referencedCatalog, referencedSchema, referencedTableName));
-							}
-
-							// Find the column on the table
-							Column referencedColumn = referencedTable.Columns.SingleOrDefault(c => c.Name == referencedColumnName);
-
-							// Check it exists
-							if (referencedColumn == null)
-							{
-								throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The foreign key refers to a column which hasn't been populated for the given table ({0}.{1})", referencedTable, referencedColumnName));
-							}
-
-							// Assign the referenced column to the constraint
-							constraint.ReferencedColumn = referencedColumn;
-
-							table.Constraints.Add(constraint);
+							throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The foreign key refers to a table which doesn't exist in the collection ({0}.{1}.{2})", referencedCatalog, referencedSchema, referencedTableName));
 						}
+
+						// Find the column on the table
+						Column referencedColumn = referencedTable.Columns.SingleOrDefault(c => c.Name == referencedColumnName);
+
+						// Check it exists
+						if (referencedColumn == null)
+						{
+							throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The foreign key refers to a column which hasn't been populated for the given table ({0}.{1})", referencedTable, referencedColumnName));
+						}
+
+						// Assign the referenced column to the constraint
+						constraint.ReferencedColumn = referencedColumn;
+
+						table.Constraints.Add(constraint);
 					}
 				}
 			}

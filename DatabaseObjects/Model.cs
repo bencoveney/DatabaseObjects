@@ -1,7 +1,9 @@
 ﻿namespace DatabaseObjects
 {
+	using System;
 	using System.Collections.Generic;
 	using System.Collections.ObjectModel;
+	using System.Data.SqlClient;
 	using System.Linq;
 
 	/// <summary>
@@ -104,10 +106,33 @@
 		/// Loads the objects from the database.
 		/// </summary>
 		/// <param name="connectionString">The connection string.</param>
-		/// <returns>The model.</returns>
+		/// <returns>
+		/// The model.
+		/// </returns>
 		public static Model LoadFromDatabase(string connectionString)
 		{
-			return new Model(Table.LoadFromDatabase(connectionString), Routine.LoadFromDatabase(connectionString));
+			using (SqlConnection connection = new SqlConnection(connectionString))
+			{
+				return LoadFromDatabase(new SqlObjectDataProvider(connection));
+			}
+		}
+
+		/// <summary>
+		/// Loads the objects from the database.
+		/// </summary>
+		/// <param name="dataProvider">The data provider.</param>
+		/// <returns>
+		/// The model.
+		/// </returns>
+		/// <exception cref="System.ArgumentNullException">dataProvider;dataProvider cannot be null</exception>
+		private static Model LoadFromDatabase(IObjectDataProvider dataProvider)
+		{
+			if (dataProvider == null)
+			{
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
+			}
+
+			return new Model(Table.LoadFromDatabase(dataProvider), Routine.LoadFromDatabase(dataProvider));
 		}
 	}
 }

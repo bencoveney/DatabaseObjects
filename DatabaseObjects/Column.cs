@@ -1,10 +1,8 @@
 ﻿namespace DatabaseObjects
 {
 	using System;
-	using System.Collections.Generic;
-	using System.Data.SqlClient;
+	using System.Data;
 	using System.Globalization;
-	using System.Linq;
 
 	/// <summary>
 	/// Represents a table's column in the database
@@ -109,47 +107,49 @@ ORDER BY
 		/// Loads the columns from the database for a specific table.
 		/// </summary>
 		/// <param name="table">The table.</param>
-		/// <param name="connection">The connection.</param>
-		public static void PopulateColumns(Table table, SqlConnection connection)
+		/// <param name="dataProvider">The data provider.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// table;table cannot be null
+		/// or
+		/// dataProvider;dataProvider cannot be null
+		/// </exception>
+		public static void PopulateColumns(Table table, IObjectDataProvider dataProvider)
 		{
 			if (table == null)
 			{
 				throw new ArgumentNullException("table", "table cannot be null");
 			}
 
-			// Query the database for the column data
-			using (SqlCommand command = new SqlCommand(ColumnsQuery, connection))
+			if (dataProvider == null)
 			{
-				command.Parameters.AddWithValue("TableCatalog", table.Catalog);
-				command.Parameters.AddWithValue("TableSchema", table.Schema);
-				command.Parameters.AddWithValue("TableName", table.Name);
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
+			}
 
-				using (SqlDataReader result = command.ExecuteReader())
+			using (IDataReader result = dataProvider.LoadColumnDataForTable(table))
+			{
+				while (result.Read())
 				{
-					while (result.Read())
-					{
-						// Read the result data
-						string name = (string)result["COLUMN_NAME"];
-						int ordinalPosition = (int)result["ORDINAL_POSITION"];
-						string columnDefault = result.GetNullableString("COLUMN_DEFAULT");
-						bool isNullable = ((string)result["IS_NULLABLE"]).Equals("NO") ? false : true;
+					// Read the result data
+					string name = (string)result["COLUMN_NAME"];
+					int ordinalPosition = (int)result["ORDINAL_POSITION"];
+					string columnDefault = result.GetNullableString("COLUMN_DEFAULT");
+					bool isNullable = ((string)result["IS_NULLABLE"]).Equals("NO") ? false : true;
 
-						// Read the result data for the routine's return type
-						string dataType = (string)result["DATA_TYPE"];
-						int? characterMaximumLength = result.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
-						int? numericPrecision = result.GetNullable<int>("NUMERIC_PRECISION");
-						int? numericPrecisionRadix = result.GetNullable<int>("NUMERIC_PRECISION_RADIX");
-						int? numericScale = result.GetNullable<int>("NUMERIC_SCALE");
-						int? dateTimePrecision = result.GetNullable<int>("DATETIME_PRECISION");
-						string characterSetName = result.GetNullableString("CHARACTER_SET_NAME");
-						string collationName = result.GetNullableString("COLLATION_NAME");
+					// Read the result data for the routine's return type
+					string dataType = (string)result["DATA_TYPE"];
+					int? characterMaximumLength = result.GetNullable<int>("CHARACTER_MAXIMUM_LENGTH");
+					int? numericPrecision = result.GetNullable<int>("NUMERIC_PRECISION");
+					int? numericPrecisionRadix = result.GetNullable<int>("NUMERIC_PRECISION_RADIX");
+					int? numericScale = result.GetNullable<int>("NUMERIC_SCALE");
+					int? dateTimePrecision = result.GetNullable<int>("DATETIME_PRECISION");
+					string characterSetName = result.GetNullableString("CHARACTER_SET_NAME");
+					string collationName = result.GetNullableString("COLLATION_NAME");
 
-						// Build the proper data structure for return type
-						SqlType type = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
+					// Build the proper data structure for return type
+					SqlType type = new SqlType(dataType, characterMaximumLength, characterSetName, collationName, numericPrecision, numericPrecisionRadix, numericScale, dateTimePrecision);
 
-						// Build the new column
-						table.Columns.Add(new Column(name, type, ordinalPosition, columnDefault, isNullable));
-					}
+					// Build the new column
+					table.Columns.Add(new Column(name, type, ordinalPosition, columnDefault, isNullable));
 				}
 			}
 		}

@@ -1,9 +1,8 @@
 ﻿namespace DatabaseObjects
 {
 	using System;
-	using System.Collections.Generic;
 	using System.Collections.ObjectModel;
-	using System.Data.SqlClient;
+	using System.Data;
 	using System.Globalization;
 	using System.Linq;
 
@@ -150,57 +149,44 @@
 		/// <summary>
 		/// Loads the tables from the database.
 		/// </summary>
-		/// <param name="connectionString">The connection string.</param>
-		/// <returns>The loaded collections.</returns>
-		public static Collection<Table> LoadFromDatabase(string connectionString)
+		/// <param name="dataProvider">The data provider.</param>
+		/// <returns>
+		/// The loaded collections.
+		/// </returns>
+		/// <exception cref="System.ArgumentNullException">dataProvider;dataProvider cannot be null</exception>
+		public static Collection<Table> LoadFromDatabase(IObjectDataProvider dataProvider)
 		{
-			const string TablesQuery = @"
-SELECT
-	SchemaTables.Table_Catalog,
-	SchemaTables.Table_Schema,
-	SchemaTables.Table_Name
-FROM
-	Information_Schema.Tables AS SchemaTables
-WHERE
-	SchemaTables.Table_Type = 'BASE TABLE'
-	AND SchemaTables.Table_Name != 'sysdiagrams'
-	AND SchemaTables.Table_Name != '__RefactorLog'";
-
 			Collection<Table> result = new Collection<Table>();
 
-			using (SqlConnection connection = new SqlConnection(connectionString))
+			if (dataProvider == null)
 			{
-				connection.Open();
-
-				// Query the database for the table data
-				using (SqlCommand command = new SqlCommand(TablesQuery, connection))
-				{
-					using (SqlDataReader reader = command.ExecuteReader())
-					{
-						while (reader.Read())
-						{
-							// Read the result data
-							string tableCatalog = reader.GetString(0);
-							string tableSchema = reader.GetString(1);
-							string tableName = reader.GetString(2);
-
-							// Build the new table
-							Table table = new Table(tableCatalog, tableSchema, tableName);
-
-							result.Add(table);
-						}
-					}
-				}
-
-				// Populate additional schema objects
-				foreach (Table table in result)
-				{
-					Column.PopulateColumns(table, connection);
-					Constraint.PopulateUniqueConstraints(table, connection);
-				}
-
-				Constraint.PopulateReferentialConstraints(result, connection);
+				throw new ArgumentNullException("dataProvider", "dataProvider cannot be null");
 			}
+
+			using (IDataReader reader = dataProvider.LoadTableData())
+			{
+				while (reader.Read())
+				{
+					// Read the result data
+					string tableCatalog = reader.GetString(0);
+					string tableSchema = reader.GetString(1);
+					string tableName = reader.GetString(2);
+
+					// Build the new table
+					Table table = new Table(tableCatalog, tableSchema, tableName);
+
+					result.Add(table);
+				}
+			}
+
+			// Populate additional schema objects
+			foreach (Table table in result)
+			{
+				Column.PopulateColumns(table, dataProvider);
+				Constraint.PopulateUniqueConstraints(table, dataProvider);
+			}
+
+			Constraint.PopulateReferentialConstraints(result, dataProvider);
 
 			return result;
 		}
