@@ -55,7 +55,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DatabaseObjects\DatabaseObjects.csproj">
+    <ProjectReference Include="..\..\DatabaseObjects\DatabaseObjects.csproj">
       <Project>{e9352bc3-224d-44f6-a2d9-3d7a8599aca8}</Project>
       <Name>DatabaseObjects</Name>
     </ProjectReference>

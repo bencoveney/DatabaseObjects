@@ -114,39 +114,6 @@
 		}
 
 		/// <summary>
-		/// Gets a value indicating whether the table is an item.
-		/// </summary>
-		public bool RepresentsItem
-		{
-			get
-			{
-				return !this.RepresentsRelationship && !this.RepresentsCategory;
-			}
-		}
-
-		/// <summary>
-		/// Gets a value indicating whether the table is a relationship.
-		/// </summary>
-		public bool RepresentsRelationship
-		{
-			get
-			{
-				return this.Name.Contains("Collection");
-			}
-		}
-
-		/// <summary>
-		/// Gets a value indicating whether the table is a category.
-		/// </summary>
-		public bool RepresentsCategory
-		{
-			get
-			{
-				return this.Name.Contains("Category");
-			}
-		}
-
-		/// <summary>
 		/// Loads the tables from the database.
 		/// </summary>
 		/// <param name="dataProvider">The data provider.</param>
