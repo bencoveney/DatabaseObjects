@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup Label="Build">
+    <TargetFramework>netcoreapp1.1</TargetFramework>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisRuleSet>../analysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+   <PropertyGroup Label="Package">
+    <OutputType>Exe</OutputType>
+    <AssemblyName>DatabaseObjects.Tests</AssemblyName>
+    <AssemblyTitle>DatabaseObjects.Tests</AssemblyTitle>
+    <PackageId>DatabaseObjects.Tests</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Ben Coveney</Authors>
+    <Description>Utility objects for inspecting database schemas.</Description>
+    <RootNamespace>DatabaseObjects.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup Label="Package References">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.0.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="1.1.11" />
+    <PackageReference Include="MSTest.TestFramework" Version="1.1.11" />
+  </ItemGroup>
+  <ItemGroup Label="Project References">
+    <ProjectReference Include="..\DatabaseObjects\DatabaseObjects.csproj" />
+  </ItemGroup>
+</Project>
